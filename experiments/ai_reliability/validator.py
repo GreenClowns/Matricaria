@@ -85,7 +85,10 @@ def check_actions(world: World, speaker_id: str, actions: list[dict]) -> list[Ac
             elif not world.characters[who].alive:
                 ok, reason = False, f"{world.characters[who].name} мёртв"
         elif kind == "remember":
-            if not isinstance(act.get("text"), str) or not act["text"].strip():
+            # Модели иногда кладут текст памяти не в то поле — для записи
+            # в память важен сам текст, поэтому берём любое непустое строковое поле.
+            texts = [x for k, x in act.items() if k != "type" and isinstance(x, str) and x.strip()]
+            if not texts:
                 ok, reason = False, "пустая запись"
         elif kind == "miracle":
             if not speaker.abilities:
@@ -107,10 +110,36 @@ class FactCheck:
     reason: str
 
 
+# Слова-связки, которые модели ставят в predicate вместо настоящего ключа.
+FILLER_PREDICATES = {"", "is", "=", "==", "равно", "это", "есть", "value", "значение"}
+
+
+def normalize_fact(world: World, fact: dict) -> dict:
+    """Приводит факт к ключам базы, если модель записала его по-своему.
+
+    Примеры: {"tavern.room_price", "равно", "20"} → {"tavern", "room_price", "20"};
+    {"Гордей", "alive", "нет"} → {"gordey", "alive", "нет"}.
+    """
+    subject, predicate, obj = fact["subject"].strip(), fact["predicate"].strip(), fact["object"].strip()
+    names = {c.name.lower(): cid for cid, c in world.characters.items()}
+    names.update({name.lower(): lid for lid, name in world.locations.items()})
+    subject = names.get(subject.lower(), subject)
+    if "." in subject:
+        head, tail = subject.split(".", 1)
+        head = names.get(head.lower(), head)
+        if world.canon(head, tail) is not None or any(
+            x.subject == head and x.predicate == tail for x in world.facts
+        ):
+            if predicate.lower() not in FILLER_PREDICATES:
+                obj = f"{predicate} {obj}".strip()
+            subject, predicate = head, tail
+    return {"subject": subject, "predicate": predicate, "object": obj}
+
+
 def check_facts(world: World, speaker_id: str, facts: list[dict]) -> list[FactCheck]:
     """Сверяет утверждения из поля facts с базой."""
     results = []
-    for f in facts:
+    for f in (normalize_fact(world, x) for x in facts):
         canon = world.canon(f["subject"], f["predicate"])
         if canon is None:
             results.append(FactCheck(f, "new", "в базе нет такого факта — новая деталь"))

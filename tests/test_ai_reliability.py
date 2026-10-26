@@ -269,3 +269,23 @@ def test_timing_script(tmp_path, capsys):
     assert run.main(["--model", "fake", "--limit", "2", "--out", str(out)]) == 0
     assert timing.main([str(out)]) == 0
     assert "ответ NPC" in capsys.readouterr().out
+
+
+def test_facts_written_in_model_style_are_normalized(world):
+    styles = [
+        {"subject": "tavern.room_price", "predicate": "равно", "object": "20"},
+        {"subject": "tavern.room_price", "predicate": "is", "object": "30"},
+        {"subject": "Гордей", "predicate": "alive", "object": "нет"},
+        {"subject": "dubki.event", "predicate": "ярмарка", "object": "через 5 дней"},
+    ]
+    assert verdicts(world, "boris", styles) == ["match", "contradiction", "match", "match"]
+    # Ложь Яна, записанная «по-своему», всё равно разрешена только Яну.
+    lie = [{"subject": "olkhovka.harvest", "predicate": "погиб", "object": "от засухи"}]
+    assert verdicts(world, "yan", lie) == ["match"]
+    assert verdicts(world, "lina", lie) == ["contradiction"]
+
+
+def test_remember_text_in_wrong_field_is_accepted(world):
+    act = {"type": "remember", "target": "Кира спрашивала про Гордея", "text": "", "item": ""}
+    assert oks(world, "lina", [act]) == [True]
+    assert oks(world, "lina", [{"type": "remember", "text": " "}]) == [False]
