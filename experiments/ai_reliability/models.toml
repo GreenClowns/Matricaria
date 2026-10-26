@@ -43,6 +43,19 @@ price_out = 0.87
 response_format = "json_schema"
 max_tokens = 4000
 
+# Та же MiMo, но без размышлений: должна отвечать быстрее, вопрос — не хуже ли.
+# reasoning_effort = "none" по документации NanoGPT выключает размышления.
+[profiles.mimo-fast]
+name = "Xiaomi MiMo V2.6 Pro без размышлений (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "xiaomi/mimo-v2.6-pro"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.435
+price_out = 0.87
+response_format = "json_schema"
+max_tokens = 1000
+extra = { reasoning_effort = "none" }
+
 # Локальные модели: llama-server из llama.cpp на компьютере автора.
 # Имя модели llama-server не проверяет, оно нужно только для отчёта.
 [profiles.C]

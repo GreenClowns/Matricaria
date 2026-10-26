@@ -244,3 +244,28 @@ def test_mimo_profile_loads():
     mimo = load_profiles()["mimo"]
     assert mimo.url == "https://nano-gpt.com/api/v1"
     assert mimo.has_prices and mimo.max_tokens >= 2000
+
+
+def test_profile_extra_goes_into_request():
+    from llm import load_profiles
+    client = ChatClient(load_profiles()["mimo-fast"], "key")
+    sent = {}
+
+    def fake_post(body):
+        sent.update(body)
+        return {"choices": [{"message": {"content": "{}"}}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 2,
+                          "completion_tokens_details": {"reasoning_tokens": 0}}}
+
+    client._post = fake_post
+    comp = client.complete([{"role": "user", "content": "привет"}])
+    assert sent["reasoning_effort"] == "none"
+    assert comp.reasoning_tokens == 0 and comp.stats("npc")["reasoning_tokens"] == 0
+
+
+def test_timing_script(tmp_path, capsys):
+    import timing
+    out = tmp_path / "fake.jsonl"
+    assert run.main(["--model", "fake", "--limit", "2", "--out", str(out)]) == 0
+    assert timing.main([str(out)]) == 0
+    assert "ответ NPC" in capsys.readouterr().out

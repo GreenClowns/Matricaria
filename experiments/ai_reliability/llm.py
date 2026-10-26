@@ -13,7 +13,7 @@ import time
 import tomllib
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -41,6 +41,8 @@ class Profile:
     temperature: float = 0.7
     max_tokens: int = 600
     timeout: float = 180.0
+    # Дополнительные поля запроса, например reasoning_effort = "none".
+    extra: dict = field(default_factory=dict)
 
     @property
     def is_fake(self) -> bool:
@@ -58,6 +60,7 @@ class Completion:
     completion_tokens: int
     latency: float
     cost: float
+    reasoning_tokens: int = 0  # сколько токенов модель потратила на размышления
 
     def stats(self, role: str) -> dict:
         return {
@@ -66,6 +69,7 @@ class Completion:
             "prompt_tokens": self.prompt_tokens,
             "completion_tokens": self.completion_tokens,
             "cost": self.cost,
+            "reasoning_tokens": self.reasoning_tokens,
         }
 
 
@@ -136,6 +140,7 @@ class ChatClient:
             "temperature": self.profile.temperature if temperature is None else temperature,
             "max_tokens": self.profile.max_tokens,
             "stream": False,
+            **self.profile.extra,
         }
         delays = [2, 4, 8]
         attempt = 0
@@ -209,7 +214,9 @@ class ChatClient:
         pt = int(usage.get("prompt_tokens") or 0)
         ct = int(usage.get("completion_tokens") or 0)
         cost = (pt * self.profile.price_in + ct * self.profile.price_out) / 1_000_000
-        return Completion(text, pt, ct, latency, round(cost, 6))
+        details = usage.get("completion_tokens_details") or {}
+        rt = int(details.get("reasoning_tokens") or 0)
+        return Completion(text, pt, ct, latency, round(cost, 6), rt)
 
 
 class FakeClient(ChatClient):
