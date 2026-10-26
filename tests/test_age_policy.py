@@ -30,3 +30,12 @@ def test_minor_weight_cannot_change():
     result = check_action("body_change", [CHILD], BodyChange(weight_kg=5))
     assert not result.allowed
     assert "weight_kg" in result.reason
+
+
+def test_minor_chest_cannot_change():
+    assert not check_action("body_change", [TEEN], BodyChange(chest=1)).allowed
+    assert check_action("body_change", [ADULT], BodyChange(chest=1)).allowed
+
+
+def test_minor_can_grow_tall():
+    assert check_action("body_change", [CHILD], BodyChange(height_cm=100)).allowed

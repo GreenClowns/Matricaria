@@ -77,8 +77,8 @@ def portrait_prompt(appearance: dict, body: Body, emotion: str = "neutral") -> d
         parts.append(appearance["outfit"])
     parts.append(_EMOTION_TAGS[emotion])
 
+    parts.append("fully clothed")
     negative = list(_NEGATIVE)
     if body.stage is not AgeStage.ADULT:
-        parts.append("fully clothed")
         negative += ["mature", "sexualized"]
     return {"prompt": ", ".join(parts), "negative_prompt": ", ".join(negative)}

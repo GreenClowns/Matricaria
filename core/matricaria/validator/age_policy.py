@@ -23,7 +23,7 @@ MINOR_ALLOWED_ACTIONS = frozenset({
     "body_change",
 })
 
-# Какие поля тела можно менять у несовершеннолетних.
+# Какие поля тела можно менять у несовершеннолетних. Размер груди у них не задаётся вовсе.
 MINOR_BODY_FIELDS = frozenset({"height_cm", "age_years"})
 
 

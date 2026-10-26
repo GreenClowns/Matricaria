@@ -1,7 +1,8 @@
-"""Тело персонажа: возраст, рост, вес и то, как они видны на экране.
+"""Тело персонажа: возраст, рост, вес, пропорции и то, как они видны на экране.
 
 Тело меняется только через `apply_change`: так все изменения проходят
 одни и те же проверки, а валидатор может отклонить недопустимые.
+Поддерживаются и магические превращения: зелье роста, уменьшение до феи.
 """
 
 from __future__ import annotations
@@ -11,17 +12,23 @@ from enum import Enum
 
 ADULT_AGE = 18
 
-# Допустимые границы для любого персонажа.
-HEIGHT_RANGE_CM = (50.0, 250.0)
-WEIGHT_RANGE_KG = (3.0, 300.0)
+# Допустимые границы для любого персонажа: от феи до колосса.
+HEIGHT_RANGE_CM = (10.0, 3000.0)
+WEIGHT_RANGE_KG = (0.01, 500_000.0)
 
-# Сколько можно изменить за одно действие.
-MAX_HEIGHT_STEP_CM = 30.0
-MAX_WEIGHT_STEP_KG = 40.0
+# Во сколько раз рост или вес может измениться за одно действие.
+# Большие превращения идут несколькими шагами, и каждый попадает в журнал.
+MAX_STEP_FACTOR = 2.0
+# Возраст за одно действие растёт не больше чем на год; долгое время идёт через симуляцию.
+MAX_AGE_STEP = 1
+
+# Размер груди: 0 — не описывается, 1–5 — от маленькой до очень большой. Только для взрослых.
+CHEST_RANGE = (0, 5)
+MAX_CHEST_STEP = 2
 
 # Рост взрослого, при котором спрайт рисуется без масштаба.
 REFERENCE_HEIGHT_CM = 170.0
-SPRITE_SCALE_RANGE = (0.5, 1.3)
+SPRITE_SCALE_RANGE = (0.25, 6.0)
 
 
 class BodyChangeError(ValueError):
@@ -52,6 +59,34 @@ class Build(str, Enum):
     HEAVY = "heavy"
 
 
+class SizeClass(str, Enum):
+    """Размер относительно обычного человека. Godot по нему решает, как показать персонажа."""
+
+    TINY = "tiny"          # меньше 60 см: фея, уменьшенный человек
+    SMALL = "small"        # 60–140 см
+    NORMAL = "normal"      # 140–220 см
+    TALL = "tall"          # 220–400 см: великан, ещё проходит в дверь с трудом
+    GIANT = "giant"        # 4–12 м: выше домов
+    COLOSSAL = "colossal"  # больше 12 м
+
+
+_SIZE_LIMITS = [(60, SizeClass.TINY), (140, SizeClass.SMALL), (220, SizeClass.NORMAL),
+                (400, SizeClass.TALL), (1200, SizeClass.GIANT)]
+
+# Как показывать персонажа в сцене диалога.
+_FRAMING = {
+    SizeClass.TINY: "small_on_ground",
+    SizeClass.SMALL: "full_body",
+    SizeClass.NORMAL: "full_body",
+    SizeClass.TALL: "full_body",
+    SizeClass.GIANT: "cropped_upper",    # виден до пояса, смотрит сверху
+    SizeClass.COLOSSAL: "legs_only",     # в кадре только ноги, лицо — отдельной вставкой
+}
+
+# В этих границах роста ИМТ считается как обычно. За ними вес пересчитывается
+# по объёму (куб роста), чтобы у гигантов и фей сложение определялось честно.
+NORMAL_BMI_HEIGHT_CM = (140.0, 220.0)
+
 # Верхняя граница ИМТ для каждого телосложения (взрослые).
 _BUILD_BMI = [(17.0, Build.THIN), (20.0, Build.SLIM), (25.0, Build.AVERAGE), (31.0, Build.PLUMP)]
 
@@ -64,18 +99,25 @@ _BUILD_WIDTH = {
     Build.HEAVY: 1.25,
 }
 
+_CHEST_TAGS = {1: "small chest", 2: "medium chest", 3: "large chest",
+               4: "very large chest", 5: "huge chest"}
+
 
 @dataclass(frozen=True)
 class Body:
     age_years: int
     height_cm: float
     weight_kg: float
+    chest: int = 0
 
     def __post_init__(self) -> None:
         if self.age_years < 0:
             raise BodyChangeError("возраст не может быть отрицательным")
         _check_range("рост", self.height_cm, HEIGHT_RANGE_CM)
         _check_range("вес", self.weight_kg, WEIGHT_RANGE_KG)
+        _check_range("размер груди", self.chest, CHEST_RANGE)
+        if self.is_minor and self.chest:
+            raise BodyChangeError("у персонажей младше 18 лет размер груди не задаётся")
 
     @property
     def stage(self) -> AgeStage:
@@ -87,8 +129,7 @@ class Body:
 
     @property
     def bmi(self) -> float:
-        meters = self.height_cm / 100
-        return self.weight_kg / (meters * meters)
+        return _bmi(self.height_cm, self.weight_kg)
 
     @property
     def build(self) -> Build:
@@ -100,13 +141,22 @@ class Body:
                 return build
         return Build.HEAVY
 
+    @property
+    def size_class(self) -> SizeClass:
+        for limit, size in _SIZE_LIMITS:
+            if self.height_cm < limit:
+                return size
+        return SizeClass.COLOSSAL
+
     def sprite_params(self) -> dict:
-        """Что нужно Godot, чтобы нарисовать персонажа на карте."""
+        """Что нужно Godot, чтобы нарисовать персонажа на карте и в сцене."""
         scale_y = _clamp(self.height_cm / REFERENCE_HEIGHT_CM, *SPRITE_SCALE_RANGE)
         return {
             "lpc_body": "child" if self.stage is AgeStage.CHILD else
                         "teen" if self.stage is AgeStage.TEEN else "adult",
             "build": self.build.value,
+            "size": self.size_class.value,
+            "framing": _FRAMING[self.size_class],
             "scale_x": round(_BUILD_WIDTH[self.build] * scale_y, 3),
             "scale_y": round(scale_y, 3),
         }
@@ -118,56 +168,100 @@ class Body:
             AgeStage.TEEN: ["teenager"],
             AgeStage.ADULT: ["adult"],
         }[self.stage]
-        build_tags = {
+        tags += {
             Build.THIN: ["very thin", "gaunt face"],
             Build.SLIM: ["slim"],
             Build.AVERAGE: [],
             Build.PLUMP: ["chubby", "round face"],
             Build.HEAVY: ["fat", "very round face", "double chin"],
         }[self.build]
-        return tags + build_tags
+        tags += {
+            SizeClass.TINY: ["tiny person", "fairy-sized"],
+            SizeClass.TALL: ["very tall", "towering"],
+            SizeClass.GIANT: ["giant", "towering", "low angle"],
+            SizeClass.COLOSSAL: ["colossal giant", "low angle", "clouds behind head"],
+        }.get(self.size_class, [])
+        if self.chest:
+            tags.append(_CHEST_TAGS[self.chest])
+        return tags
 
     def to_dict(self) -> dict:
         return {"age_years": self.age_years, "height_cm": self.height_cm,
-                "weight_kg": self.weight_kg}
+                "weight_kg": self.weight_kg, "chest": self.chest}
 
     @classmethod
     def from_dict(cls, data: dict) -> Body:
-        return cls(int(data["age_years"]), float(data["height_cm"]), float(data["weight_kg"]))
+        return cls(int(data["age_years"]), float(data["height_cm"]), float(data["weight_kg"]),
+                   int(data.get("chest", 0)))
 
 
 @dataclass(frozen=True)
 class BodyChange:
-    """Изменение тела. Пустые поля не меняются."""
+    """Изменение тела. Пустые поля не меняются.
+
+    keep_build: при изменении роста вес меняется вместе с ним (пропорционально объёму),
+    чтобы персонаж оставался таким же по сложению, просто больше или меньше.
+    """
 
     height_cm: float = 0.0
     weight_kg: float = 0.0
     age_years: int = 0
+    chest: int = 0
+    keep_build: bool = True
 
     @property
     def fields(self) -> set[str]:
-        return {name for name in ("height_cm", "weight_kg", "age_years") if getattr(self, name)}
+        return {name for name in ("height_cm", "weight_kg", "age_years", "chest")
+                if getattr(self, name)}
 
 
 def apply_change(body: Body, change: BodyChange) -> Body:
     """Вернуть новое тело с изменением. Старое тело не меняется."""
-    if abs(change.height_cm) > MAX_HEIGHT_STEP_CM:
-        raise BodyChangeError(f"рост за раз меняется не больше чем на {MAX_HEIGHT_STEP_CM:g} см")
-    if abs(change.weight_kg) > MAX_WEIGHT_STEP_KG:
-        raise BodyChangeError(f"вес за раз меняется не больше чем на {MAX_WEIGHT_STEP_KG:g} кг")
     if change.age_years < 0:
         raise BodyChangeError("возраст нельзя уменьшить: время идёт только вперёд")
+    if change.age_years > MAX_AGE_STEP:
+        raise BodyChangeError(f"возраст за раз растёт не больше чем на {MAX_AGE_STEP} год")
+    if abs(change.chest) > MAX_CHEST_STEP:
+        raise BodyChangeError(f"размер груди за раз меняется не больше чем на {MAX_CHEST_STEP}")
+
+    height = body.height_cm + change.height_cm
+    _check_step("рост", body.height_cm, height)
+    weight = body.weight_kg
+    if change.height_cm and change.keep_build:
+        weight = _weight_for_bmi(height, body.bmi)
+    before_explicit = weight
+    weight += change.weight_kg
+    _check_step("вес", before_explicit, weight)
+
     return replace(
         body,
         age_years=body.age_years + change.age_years,
-        height_cm=round(body.height_cm + change.height_cm, 1),
-        weight_kg=round(body.weight_kg + change.weight_kg, 1),
+        height_cm=round(height, 1),
+        weight_kg=round(weight, 1),
+        chest=body.chest + change.chest,
     )
 
 
 def portrait_is_stale(old: Body, new: Body) -> bool:
-    """Нужно ли перегенерировать портрет: сменилось телосложение или возраст."""
-    return old.build is not new.build or old.stage is not new.stage
+    """Нужно ли перегенерировать портрет: изменилось то, что видно на портрете."""
+    return (old.build, old.stage, old.size_class, old.chest) != \
+           (new.build, new.stage, new.size_class, new.chest)
+
+
+def _bmi(height_cm: float, weight_kg: float) -> float:
+    ref = _clamp(height_cm, *NORMAL_BMI_HEIGHT_CM)
+    normal_weight = weight_kg / (height_cm / ref) ** 3
+    return normal_weight / (ref / 100) ** 2
+
+
+def _weight_for_bmi(height_cm: float, bmi: float) -> float:
+    ref = _clamp(height_cm, *NORMAL_BMI_HEIGHT_CM)
+    return bmi * (ref / 100) ** 2 * (height_cm / ref) ** 3
+
+
+def _check_step(label: str, old: float, new: float) -> None:
+    if new <= 0 or not 1 / MAX_STEP_FACTOR <= new / old <= MAX_STEP_FACTOR:
+        raise BodyChangeError(f"{label} за раз меняется не больше чем в {MAX_STEP_FACTOR:g} раза")
 
 
 def _check_range(label: str, value: float, bounds: tuple[float, float]) -> None:

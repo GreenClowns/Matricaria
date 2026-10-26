@@ -35,8 +35,9 @@ def test_pixelize_upscale_and_selout():
 def test_prompt_is_safe_and_follows_body():
     child = portrait_prompt({"hair": {"color": "pink", "style": "short"}}, Body(9, 130, 40), "happy")
     assert "child" in child["prompt"] and "fully clothed" in child["prompt"]
+    assert "chest" not in child["prompt"]
     assert "chubby" in child["prompt"]
     assert "nsfw" in child["negative_prompt"] and "sexualized" in child["negative_prompt"]
     adult = portrait_prompt({"eyes": "blue"}, Body(25, 170, 62))
     assert "nsfw" in adult["negative_prompt"]
-    assert "blue eyes" in adult["prompt"]
+    assert "blue eyes" in adult["prompt"] and "fully clothed" in adult["prompt"]
