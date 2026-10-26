@@ -12,9 +12,9 @@ from enum import Enum
 
 ADULT_AGE = 18
 
-# Допустимые границы для любого персонажа: от феи до колосса.
-HEIGHT_RANGE_CM = (10.0, 3000.0)
-WEIGHT_RANGE_KG = (0.01, 500_000.0)
+# Допустимые границы для любого персонажа: от 1 см до 1 км.
+HEIGHT_RANGE_CM = (1.0, 100_000.0)
+WEIGHT_RANGE_KG = (1e-6, 1e11)
 
 # Во сколько раз рост или вес может измениться за одно действие.
 # Большие превращения идут несколькими шагами, и каждый попадает в журнал.
@@ -22,7 +22,7 @@ MAX_STEP_FACTOR = 2.0
 # Возраст за одно действие растёт не больше чем на год; долгое время идёт через симуляцию.
 MAX_AGE_STEP = 1
 
-# Размер груди: 0 — не описывается, 1–5 — от маленькой до очень большой. Только для взрослых.
+# Размер груди: 0 — не описывается, 1–5 — от маленькой до огромной. Только для взрослых.
 CHEST_RANGE = (0, 5)
 MAX_CHEST_STEP = 2
 
@@ -62,25 +62,30 @@ class Build(str, Enum):
 class SizeClass(str, Enum):
     """Размер относительно обычного человека. Godot по нему решает, как показать персонажа."""
 
-    TINY = "tiny"          # меньше 60 см: фея, уменьшенный человек
+    MICRO = "micro"        # меньше 10 см: помещается на ладони
+    TINY = "tiny"          # 10–60 см: фея, уменьшенный человек
     SMALL = "small"        # 60–140 см
     NORMAL = "normal"      # 140–220 см
     TALL = "tall"          # 220–400 см: великан, ещё проходит в дверь с трудом
     GIANT = "giant"        # 4–12 м: выше домов
-    COLOSSAL = "colossal"  # больше 12 м
+    COLOSSAL = "colossal"  # 12–100 м
+    TITAN = "titan"        # больше 100 м: выше небоскрёбов
 
 
-_SIZE_LIMITS = [(60, SizeClass.TINY), (140, SizeClass.SMALL), (220, SizeClass.NORMAL),
-                (400, SizeClass.TALL), (1200, SizeClass.GIANT)]
+_SIZE_LIMITS = [(10, SizeClass.MICRO), (60, SizeClass.TINY), (140, SizeClass.SMALL), (220, SizeClass.NORMAL),
+                (400, SizeClass.TALL), (1200, SizeClass.GIANT),
+                (10_000, SizeClass.COLOSSAL)]
 
 # Как показывать персонажа в сцене диалога.
 _FRAMING = {
+    SizeClass.MICRO: "closeup_on_hand",  # крупный план: персонаж на ладони или на столе
     SizeClass.TINY: "small_on_ground",
     SizeClass.SMALL: "full_body",
     SizeClass.NORMAL: "full_body",
     SizeClass.TALL: "full_body",
     SizeClass.GIANT: "cropped_upper",    # виден до пояса, смотрит сверху
     SizeClass.COLOSSAL: "legs_only",     # в кадре только ноги, лицо — отдельной вставкой
+    SizeClass.TITAN: "skyline",          # силуэт над городом, лицо — отдельной вставкой
 }
 
 # В этих границах роста ИМТ считается как обычно. За ними вес пересчитывается
@@ -99,8 +104,9 @@ _BUILD_WIDTH = {
     Build.HEAVY: 1.25,
 }
 
-_CHEST_TAGS = {1: "small chest", 2: "medium chest", 3: "large chest",
-               4: "very large chest", 5: "huge chest"}
+# Теги заметны генератору: большая грудь видна на портрете и в одежде.
+_CHEST_TAGS = {1: "small breasts", 2: "medium breasts", 3: "large breasts",
+               4: "very large breasts, curvy", 5: "huge breasts, gigantic breasts, curvy"}
 
 
 @dataclass(frozen=True)
@@ -146,7 +152,7 @@ class Body:
         for limit, size in _SIZE_LIMITS:
             if self.height_cm < limit:
                 return size
-        return SizeClass.COLOSSAL
+        return SizeClass.TITAN
 
     def sprite_params(self) -> dict:
         """Что нужно Godot, чтобы нарисовать персонажа на карте и в сцене."""
@@ -176,10 +182,13 @@ class Body:
             Build.HEAVY: ["fat", "very round face", "double chin"],
         }[self.build]
         tags += {
-            SizeClass.TINY: ["tiny person", "fairy-sized"],
+            SizeClass.MICRO: ["miniature person", "standing on a hand", "size difference"],
+            SizeClass.TINY: ["tiny person", "fairy-sized", "size difference"],
             SizeClass.TALL: ["very tall", "towering"],
             SizeClass.GIANT: ["giant", "towering", "low angle"],
             SizeClass.COLOSSAL: ["colossal giant", "low angle", "clouds behind head"],
+            SizeClass.TITAN: ["titan", "towering over city", "skyscrapers",
+                              "extreme low angle"],
         }.get(self.size_class, [])
         if self.chest:
             tags.append(_CHEST_TAGS[self.chest])
@@ -236,8 +245,8 @@ def apply_change(body: Body, change: BodyChange) -> Body:
     return replace(
         body,
         age_years=body.age_years + change.age_years,
-        height_cm=round(height, 1),
-        weight_kg=round(weight, 1),
+        height_cm=_round(height),
+        weight_kg=_round(weight),
         chest=body.chest + change.chest,
     )
 
@@ -246,6 +255,11 @@ def portrait_is_stale(old: Body, new: Body) -> bool:
     """Нужно ли перегенерировать портрет: изменилось то, что видно на портрете."""
     return (old.build, old.stage, old.size_class, old.chest) != \
            (new.build, new.stage, new.size_class, new.chest)
+
+
+def _round(value: float) -> float:
+    """Округлить до десятых, а маленькие значения — до 4 значащих цифр."""
+    return round(value, 1) if value >= 10 else float(f"{value:.4g}")
 
 
 def _bmi(height_cm: float, weight_kg: float) -> float:

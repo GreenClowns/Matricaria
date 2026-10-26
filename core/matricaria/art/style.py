@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from matricaria.content import ContentSettings, ModelInfo, decide
 from matricaria.world.body import AgeStage, Body
 
 
@@ -52,15 +53,20 @@ _BASE_PROMPT = [
     "white background", "facing viewer",
 ]
 
-# Портреты всегда без откровенного содержания; это не настраивается.
-_NEGATIVE = [
-    "nsfw", "nude", "naked", "cleavage", "suggestive", "lowres", "blurry",
-    "smooth gradient", "dithering", "3d", "photo", "watermark", "text",
-]
+_NEGATIVE = ["lowres", "blurry", "smooth gradient", "dithering", "3d", "photo", "watermark", "text"]
+# Добавляется, когда откровенное содержание недоступно (см. matricaria.content).
+_NEGATIVE_SAFE = ["nsfw", "nude", "naked", "suggestive"]
+# Добавляется всегда, когда откровенное содержание включено: персонаж должен выглядеть взрослым.
+_NEGATIVE_EXPLICIT = ["child", "loli", "shota", "teen", "young-looking", "petite childlike body"]
 
 
-def portrait_prompt(appearance: dict, body: Body, emotion: str = "neutral") -> dict:
+def portrait_prompt(appearance: dict, body: Body, emotion: str = "neutral",
+                    settings: ContentSettings | None = None, model: ModelInfo | None = None,
+                    nude: bool = False) -> dict:
     """Собрать запрос для stable-diffusion.cpp.
+
+    nude — просьба нарисовать без одежды. Выполняется, только если
+    matricaria.content.decide разрешает откровенное содержание; иначе игнорируется.
 
     appearance — описание внешности из карточки, например
     {"hair": {"style": "long", "color": "silver"}, "eyes": "blue", "outfit": "black hoodie"}.
@@ -77,8 +83,15 @@ def portrait_prompt(appearance: dict, body: Body, emotion: str = "neutral") -> d
         parts.append(appearance["outfit"])
     parts.append(_EMOTION_TAGS[emotion])
 
-    parts.append("fully clothed")
+    explicit = decide(settings, model, [body]).explicit
     negative = list(_NEGATIVE)
-    if body.stage is not AgeStage.ADULT:
-        negative += ["mature", "sexualized"]
-    return {"prompt": ", ".join(parts), "negative_prompt": ", ".join(negative)}
+    if explicit:
+        parts += ["nsfw", "nude"] if nude else []
+        parts.append("mature adult body")
+        negative += _NEGATIVE_EXPLICIT
+    else:
+        parts.append("fully clothed")
+        negative += _NEGATIVE_SAFE
+        if body.stage is not AgeStage.ADULT:
+            negative += ["mature", "sexualized", "cleavage"]
+    return {"prompt": ", ".join(parts), "negative_prompt": ", ".join(negative), "explicit": explicit}

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from matricaria.content import ContentSettings, ModelInfo, decide
 from matricaria.world.body import Body, BodyChange
 
 # Обычные действия из docs/06-ai-formats.md, допустимые с детьми и подростками:
@@ -23,6 +24,9 @@ MINOR_ALLOWED_ACTIONS = frozenset({
     "body_change",
 })
 
+# Действия откровенного характера. Доступны, только если matricaria.content.decide разрешает.
+EXPLICIT_ACTIONS = frozenset({"intimate"})
+
 # Какие поля тела можно менять у несовершеннолетних. Размер груди у них не задаётся вовсе.
 MINOR_BODY_FIELDS = frozenset({"height_cm", "age_years"})
 
@@ -37,12 +41,18 @@ OK = PolicyResult(True)
 
 
 def check_action(action_type: str, participants: list[Body],
-                 change: BodyChange | None = None) -> PolicyResult:
+                 change: BodyChange | None = None,
+                 settings: ContentSettings | None = None,
+                 model: ModelInfo | None = None) -> PolicyResult:
     """Проверить действие, в котором участвуют персонажи с этими телами.
 
     participants — тела всех, кого действие касается: и того, кто действует,
     и того, на кого оно направлено.
     """
+    if action_type in EXPLICIT_ACTIONS:
+        decision = decide(settings, model, participants)
+        if not decision.explicit:
+            return PolicyResult(False, decision.reason)
     if not any(body.is_minor for body in participants):
         return OK
     if action_type not in MINOR_ALLOWED_ACTIONS:

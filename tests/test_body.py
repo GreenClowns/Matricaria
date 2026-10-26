@@ -66,14 +66,16 @@ def test_step_limits(change):
 
 def test_absolute_limits():
     with pytest.raises(BodyChangeError):
-        apply_change(Body(25, 2000, 50_000), BodyChange(height_cm=1500))
+        apply_change(Body(25, 80_000, 1e9), BodyChange(height_cm=30_000))
+    with pytest.raises(BodyChangeError):
+        apply_change(Body(25, 1.5, 0.0001), BodyChange(height_cm=-0.6))
 
 
 def test_chest_growth_for_adults():
     before = Body(22, 165, 55, chest=2)
     after = apply_change(before, BodyChange(chest=2))
     assert after.chest == 4
-    assert "very large chest" in after.portrait_tags()
+    assert "very large breasts, curvy" in after.portrait_tags()
     assert portrait_is_stale(before, after)
     with pytest.raises(BodyChangeError):
         apply_change(after, BodyChange(chest=2))  # больше 5 нельзя
@@ -90,3 +92,23 @@ def test_round_trip():
     body = Body(30, 150.5, 40, chest=3)
     assert Body.from_dict(body.to_dict()) == body
     assert Body.from_dict({"age_years": 12, "height_cm": 150, "weight_kg": 40}).chest == 0
+
+
+def test_titan_half_a_kilometre_tall():
+    body = Body(25, 170, 62)
+    while body.height_cm * 2 <= 60_000:
+        body = apply_change(body, BodyChange(height_cm=body.height_cm))
+    body = apply_change(body, BodyChange(height_cm=60_000 - body.height_cm))
+    assert body.height_cm == 60_000  # 600 м
+    assert body.size_class is SizeClass.TITAN
+    assert body.build is Build.AVERAGE
+    assert body.sprite_params()["framing"] == "skyline"
+
+
+def test_one_centimetre():
+    body = Body(25, 170, 62)
+    while body.height_cm / 2 >= 1:
+        body = apply_change(body, BodyChange(height_cm=-body.height_cm / 2))
+    assert 1 <= body.height_cm < 2
+    assert body.size_class is SizeClass.MICRO
+    assert body.build is Build.AVERAGE
