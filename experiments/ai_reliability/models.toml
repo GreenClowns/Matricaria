@@ -29,6 +29,20 @@ price_in = 0.0
 price_out = 0.0
 response_format = "json_schema"
 
+# Модель, которую автор захотел испробовать: Xiaomi MiMo V2.6 Pro.
+# Имя модели проверьте командой: python3 list_models.py mimo
+# Цены взяты с OpenRouter ($0.435 / $0.87 за 1 млн токенов); на NanoGPT сверьте на сайте.
+# Модель умеет «размышлять» перед ответом, поэтому max_tokens больше обычного.
+[profiles.mimo]
+name = "Xiaomi MiMo V2.6 Pro (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "xiaomi/mimo-v2.6-pro"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.435
+price_out = 0.87
+response_format = "json_schema"
+max_tokens = 4000
+
 # Локальные модели: llama-server из llama.cpp на компьютере автора.
 # Имя модели llama-server не проверяет, оно нужно только для отчёта.
 [profiles.C]

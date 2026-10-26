@@ -172,6 +172,18 @@ class ChatClient:
             latency = time.monotonic() - started
             return self._parse(data, latency)
 
+    def list_models(self) -> list[str]:
+        """Имена всех моделей, которые отдаёт сайт (GET /models)."""
+        url = self.profile.url.rstrip("/") + "/models"
+        headers = {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+        req = urllib.request.Request(url, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=self.profile.timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, TimeoutError, ConnectionError) as exc:
+            raise LLMError(f"не удалось получить список моделей: {exc}") from exc
+        return sorted(m["id"] for m in data.get("data", []) if isinstance(m, dict) and "id" in m)
+
     def _post(self, body: dict) -> dict:
         url = self.profile.url.rstrip("/") + "/chat/completions"
         headers = {"Content-Type": "application/json"}
@@ -188,6 +200,11 @@ class ChatClient:
             text = data["choices"][0]["message"].get("content") or ""
         except (KeyError, IndexError, TypeError) as exc:
             raise LLMError(f"непонятный ответ сайта: {str(data)[:300]}") from exc
+        if not text.strip() and data["choices"][0].get("finish_reason") == "length":
+            print(
+                f"  [{self.profile.id}] ответ пустой: модель потратила все токены "
+                f"(вероятно, на размышления). Увеличьте max_tokens в models.toml."
+            )
         usage = data.get("usage") or {}
         pt = int(usage.get("prompt_tokens") or 0)
         ct = int(usage.get("completion_tokens") or 0)

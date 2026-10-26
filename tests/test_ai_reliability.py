@@ -229,3 +229,18 @@ def test_case_ok_prefers_judge_and_counts_actions():
     assert case_ok(rec, "final") is True
     rec["eval"]["invalid_actions"]["final"] = 1
     assert case_ok(rec, "final") is False
+
+
+def test_list_models_filter():
+    from list_models import filter_ids
+    ids = ["xiaomi/mimo-v2.6-pro", "xiaomi/mimo-v2-flash", "deepseek-chat"]
+    assert filter_ids(ids, "mimo pro") == ["xiaomi/mimo-v2.6-pro"]
+    assert filter_ids(ids, "MIMO") == ids[:2]
+    assert filter_ids(ids, "") == ids
+
+
+def test_mimo_profile_loads():
+    from llm import load_profiles
+    mimo = load_profiles()["mimo"]
+    assert mimo.url == "https://nano-gpt.com/api/v1"
+    assert mimo.has_prices and mimo.max_tokens >= 2000
