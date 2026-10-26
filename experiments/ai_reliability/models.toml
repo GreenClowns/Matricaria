@@ -11,23 +11,41 @@
 # Чтобы прогнать модель через OpenRouter, поменяйте url на
 # https://openrouter.ai/api/v1 и key_env на OPENROUTER_API_KEY.
 
+# Цены ниже — по открытым прайсам (OpenRouter и сайты разработчиков, октябрь 2026).
+# На NanoGPT они могут немного отличаться — сверьте на сайте.
+# max_tokens с запасом: модели могут «размышлять» перед ответом.
+
 [profiles.A]
-name = "Сильная модель (API, NanoGPT)"
+name = "Сильная модель: GLM-5.3 (API, NanoGPT)"
 url = "https://nano-gpt.com/api/v1"
-model = "ВПИШИТЕ_ИМЯ_МОДЕЛИ"
+model = "z-ai/glm-5.3"
 key_env = "NANOGPT_API_KEY"
-price_in = 0.0
-price_out = 0.0
+price_in = 1.40
+price_out = 4.40
 response_format = "json_schema"
+max_tokens = 4000
 
 [profiles.B]
-name = "Дешёвая модель (API, NanoGPT)"
+name = "Дешёвая модель: DeepSeek V4.1 Flash (API, NanoGPT)"
 url = "https://nano-gpt.com/api/v1"
-model = "ВПИШИТЕ_ИМЯ_МОДЕЛИ"
+model = "deepseek/deepseek-v4.1-flash-1017"
 key_env = "NANOGPT_API_KEY"
-price_in = 0.0
-price_out = 0.0
+price_in = 0.30
+price_out = 1.20
 response_format = "json_schema"
+max_tokens = 4000
+
+# Открытая модель среднего размера: её младших «родственников» можно запускать локально,
+# поэтому она полезна для сравнения с вариантами C и D.
+[profiles.gemma]
+name = "Gemma 4 31B (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "google/gemma-4-31b-it"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.12
+price_out = 0.35
+response_format = "json_schema"
+max_tokens = 4000
 
 # Модель, которую автор захотел испробовать: Xiaomi MiMo V2.6 Pro.
 # Имя модели проверьте командой: python3 list_models.py mimo
