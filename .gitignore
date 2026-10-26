@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Godot
+.godot/
+*.import
+export_presets.cfg
+build/
+
+# Модели и сгенерированные данные (скачиваются, не хранятся в git)
+models/
+*.gguf
+*.safetensors
+saves/
+cache/
+
+# Системное
+.DS_Store
+*.log
