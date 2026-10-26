@@ -1,0 +1,56 @@
+# Модели для эксперимента 0.2. Этот файл попадает в git, ключей здесь НЕТ.
+# Ключи лежат в файле .env рядом (образец — .env.example).
+#
+# url             — адрес OpenAI-совместимого сайта (без /chat/completions на конце);
+# model           — точное имя модели на этом сайте;
+# key_env         — имя строки в .env с ключом ("" — ключ не нужен);
+# price_in/out    — цена в долларах за 1 млн токенов (вход / выход), смотреть на сайте;
+# response_format — json_schema (строгая схема), json_object или none.
+#                   Если сайт не поймёт схему, скрипт сам перейдёт на формат попроще.
+#
+# Чтобы прогнать модель через OpenRouter, поменяйте url на
+# https://openrouter.ai/api/v1 и key_env на OPENROUTER_API_KEY.
+
+[profiles.A]
+name = "Сильная модель (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "ВПИШИТЕ_ИМЯ_МОДЕЛИ"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.0
+price_out = 0.0
+response_format = "json_schema"
+
+[profiles.B]
+name = "Дешёвая модель (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "ВПИШИТЕ_ИМЯ_МОДЕЛИ"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.0
+price_out = 0.0
+response_format = "json_schema"
+
+# Локальные модели: llama-server из llama.cpp на компьютере автора.
+# Имя модели llama-server не проверяет, оно нужно только для отчёта.
+[profiles.C]
+name = "Модель 7–8B (локально, llama.cpp)"
+url = "http://127.0.0.1:8080/v1"
+model = "local-7b"
+key_env = ""
+response_format = "json_schema"
+timeout = 300.0
+
+[profiles.D]
+name = "Модель 3–4B (локально, llama.cpp)"
+url = "http://127.0.0.1:8080/v1"
+model = "local-3b"
+key_env = ""
+response_format = "json_schema"
+timeout = 300.0
+
+# Поддельная модель для проверки самого скрипта: без сети и без денег.
+[profiles.fake]
+name = "Поддельная модель (проверка скрипта)"
+url = "fake://"
+model = "fake"
+price_in = 1.0
+price_out = 2.0

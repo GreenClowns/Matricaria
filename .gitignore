@@ -24,3 +24,7 @@ cache/
 
 # Секреты (ключи API)
 .env
+
+# Эксперимент 0.2: результаты поддельной модели и временные файлы
+experiments/ai_reliability/results/fake*.jsonl
+experiments/ai_reliability/results/*.tmp
