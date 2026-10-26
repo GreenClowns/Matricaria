@@ -16,6 +16,9 @@ WebSocket на `ws://127.0.0.1:<порт>`. Каждое сообщение — 
 | `time.skip` | `{ "hours": 168 }` | Пропустить время |
 | `snapshot.restore` | `{ "id": "s_12" }` | Откатиться |
 | `pending.resolve` | `{ "id": "p_3", "accept": true }` | Принять или отклонить факт |
+| `rules.set_mode` | `{ "mode": "strict" / "narrative" / "free" }` | Сменить режим правил |
+| `check.decide` | `{ "outcome": "success" }` | «Решить самому» вместо броска |
+| `author.edit` | `{ "target": "npc_17", "change": {…} }` | Действие режима рассказчика |
 
 ## Ядро → Godot (состояние)
 
