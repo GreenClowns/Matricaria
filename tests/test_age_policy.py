@@ -32,9 +32,10 @@ def test_minor_weight_cannot_change():
     assert "weight_kg" in result.reason
 
 
-def test_minor_chest_cannot_change():
-    assert not check_action("body_change", [TEEN], BodyChange(chest=1)).allowed
-    assert check_action("body_change", [ADULT], BodyChange(chest=1)).allowed
+def test_minor_parts_cannot_change_except_hair():
+    assert not check_action("body_change", [TEEN], BodyChange(parts={"chest": 1})).allowed
+    assert check_action("body_change", [TEEN], BodyChange(parts={"hair": 1})).allowed
+    assert check_action("body_change", [ADULT], BodyChange(parts={"chest": 1})).allowed
 
 
 def test_minor_can_grow_tall():

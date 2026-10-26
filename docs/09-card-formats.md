@@ -9,7 +9,7 @@
   "format": "matricaria-character",
   "version": 1,
   "name": "Кира",
-  "body": { "age_years": 19, "height_cm": 163, "weight_kg": 52 },
+  "body": { "age_years": 19, "height_cm": 163, "weight_kg": 52, "parts": { "hair": 2 } },
   "sprite": { "skin": "light", "hair": { "style": "long", "color": "#c9ced8" } },
   "portraits": { "style": "pixel", "pixel_preset": "hibit", "seed": 48213, "emotions": ["neutral", "happy", "angry"] },
   "personality": {

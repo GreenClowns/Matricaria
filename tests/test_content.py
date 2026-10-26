@@ -6,10 +6,10 @@ from matricaria.world.body import Body
 ON = ContentSettings(adult_content=True, user_confirmed_adult=True)
 OPEN_MODEL = ModelInfo("open", allows_explicit=True)
 SAFE_MODEL = ModelInfo("safe", allows_explicit=False)
-WOMAN = Body(24, 168, 60, chest=5)
-GIANT = Body(30, 60_000, 1e9, chest=4)
+WOMAN = Body(24, 168, 60, {"chest": 3})
+GIANT = Body(30, 60_000, 2e9, {"chest": 2})
 TEEN = Body(17, 165, 52)
-SHORT_ADULT = Body(25, 120, 25)
+SHORT_ADULT = Body(25, 125, 30)
 
 
 def test_off_by_default():
@@ -24,9 +24,15 @@ def test_needs_every_condition():
     assert not decide(ON, None, [WOMAN]).explicit
 
 
-def test_never_with_minors_or_childlike_height():
+def test_never_with_minors():
     assert not decide(ON, OPEN_MODEL, [WOMAN, TEEN]).explicit
-    assert not decide(ON, OPEN_MODEL, [SHORT_ADULT]).explicit
+    assert not decide(ON, OPEN_MODEL, [TEEN]).explicit
+
+
+def test_short_adult_is_adult():
+    assert decide(ON, OPEN_MODEL, [SHORT_ADULT]).explicit
+    prompt = portrait_prompt({}, SHORT_ADULT, settings=ON, model=OPEN_MODEL)
+    assert "adult face" in prompt["prompt"] and "child" in prompt["negative_prompt"]
 
 
 def test_explicit_action_gate():

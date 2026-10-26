@@ -27,8 +27,8 @@ MINOR_ALLOWED_ACTIONS = frozenset({
 # Действия откровенного характера. Доступны, только если matricaria.content.decide разрешает.
 EXPLICIT_ACTIONS = frozenset({"intimate"})
 
-# Какие поля тела можно менять у несовершеннолетних. Размер груди у них не задаётся вовсе.
-MINOR_BODY_FIELDS = frozenset({"height_cm", "age_years"})
+# Какие поля тела можно менять у несовершеннолетних: рост, возраст и длину волос.
+MINOR_BODY_FIELDS = frozenset({"height_cm", "age_years", "parts.hair"})
 
 
 @dataclass(frozen=True)
@@ -63,5 +63,5 @@ def check_action(action_type: str, participants: list[Body],
         extra = change.fields - MINOR_BODY_FIELDS
         if extra:
             names = ", ".join(sorted(extra))
-            return PolicyResult(False, f"у персонажей младше 18 лет можно менять только рост и возраст, не {names}")
+            return PolicyResult(False, f"у персонажей младше 18 лет можно менять только рост, возраст и волосы, не {names}")
     return OK

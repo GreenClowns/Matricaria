@@ -4,7 +4,11 @@
 1. пользователь сам включил его в настройках (по умолчанию выключено);
 2. пользователь подтвердил, что ему есть 18 лет;
 3. выбранная модель это допускает (её лицензия и описание);
-4. все участники — взрослые, с ростом не ниже взрослого человека.
+4. все участники — взрослые (18 лет и старше).
+
+Решает возраст, а не рост: взрослый низкого роста — такой же взрослый.
+Взрослый персонаж любого роста всегда изображается со взрослым телом и лицом
+(см. art/style.py), а детского тела у взрослых в игре не бывает.
 
 Для персонажей младше 18 лет откровенного содержания нет никогда:
 это правило не отключается ни настройкой, ни моделью.
@@ -15,10 +19,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from matricaria.world.body import Body
-
-# Ниже этого роста взрослый персонаж может выглядеть как ребёнок,
-# поэтому откровенные сцены с ним недоступны. Гиганты не ограничены.
-MIN_EXPLICIT_HEIGHT_CM = 140.0
 
 
 @dataclass(frozen=True)
@@ -48,8 +48,6 @@ def decide(settings: ContentSettings | None, model: ModelInfo | None,
     """Можно ли откровенное содержание для этой сцены или портрета."""
     if any(body.is_minor for body in participants):
         return ContentDecision(False, "в сцене есть персонаж младше 18 лет")
-    if any(body.height_cm < MIN_EXPLICIT_HEIGHT_CM for body in participants):
-        return ContentDecision(False, f"в сцене есть персонаж ниже {MIN_EXPLICIT_HEIGHT_CM:g} см")
     if settings is None or not settings.adult_content:
         return ContentDecision(False, "откровенное содержание выключено в настройках")
     if not settings.user_confirmed_adult:

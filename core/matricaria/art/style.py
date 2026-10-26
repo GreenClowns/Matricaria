@@ -87,7 +87,7 @@ def portrait_prompt(appearance: dict, body: Body, emotion: str = "neutral",
     negative = list(_NEGATIVE)
     if explicit:
         parts += ["nsfw", "nude"] if nude else []
-        parts.append("mature adult body")
+        parts += ["adult face", "mature adult body", "adult proportions"]
         negative += _NEGATIVE_EXPLICIT
     else:
         parts.append("fully clothed")
