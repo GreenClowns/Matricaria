@@ -1,6 +1,6 @@
 [project]
 name = "matricaria"
-version = "0.0.1"
+version = "0.1.0"
 description = "Ядро Matricaria: мир, симуляция, ИИ и валидатор"
 readme = "../README.md"
 license = "GPL-3.0-or-later"
