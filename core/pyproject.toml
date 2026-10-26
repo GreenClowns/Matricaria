@@ -7,6 +7,10 @@ license = "GPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = []
 
+[project.optional-dependencies]
+art = ["pillow>=10"]
+dev = ["pytest>=8", "pillow>=10"]
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

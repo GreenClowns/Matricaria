@@ -9,8 +9,9 @@
   "format": "matricaria-character",
   "version": 1,
   "name": "Кира",
-  "sprite": { "body": "slim", "skin": "light", "hair": { "style": "long", "color": "#c9ced8" } },
-  "portraits": { "style": "anime", "seed": 48213, "emotions": ["neutral", "happy", "angry"] },
+  "body": { "age_years": 19, "height_cm": 163, "weight_kg": 52 },
+  "sprite": { "skin": "light", "hair": { "style": "long", "color": "#c9ced8" } },
+  "portraits": { "style": "pixel", "pixel_preset": "hibit", "seed": 48213, "emotions": ["neutral", "happy", "angry"] },
   "personality": {
     "traits": { "kind": 60, "social": 20, "honest": 40 },
     "speech": "Коротко, с иронией",
@@ -21,6 +22,8 @@
   "example_lines": ["Ну и где тут обещанное приключение?"]
 }
 ```
+
+Телосложение и вариант спрайта вычисляются из `body` ([12](12-art-and-body.md)).
 
 Поле `version` обязательно: при изменении формата старые карточки конвертируются автоматически.
 
