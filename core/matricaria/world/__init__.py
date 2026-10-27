@@ -17,12 +17,32 @@ from .errors import NotFoundError, RuleError, SchemaError
 from .facts import FactsMixin
 from .items import ItemsMixin
 from .locations import LocationsMixin
-from .models import Character, Event, Fact, Item, Knowledge, Location, Relation, WorldInfo
+from .models import (
+    Character,
+    Event,
+    Fact,
+    Item,
+    Knowledge,
+    Location,
+    Relation,
+    Snapshot,
+    WorldInfo,
+)
 from .relations import RelationsMixin
+from .settings import SettingsMixin
+from .snapshots import SnapshotsMixin
 from .schema import SCHEMA_VERSION
 
 
-class World(CharactersMixin, LocationsMixin, ItemsMixin, RelationsMixin, FactsMixin):
+class World(
+    CharactersMixin,
+    LocationsMixin,
+    ItemsMixin,
+    RelationsMixin,
+    FactsMixin,
+    SettingsMixin,
+    SnapshotsMixin,
+):
     """Открытый мир. Создать: `World.create(...)`, открыть: `World.open(path)`."""
 
 
@@ -38,6 +58,7 @@ __all__ = [
     "Relation",
     "RuleError",
     "SchemaError",
+    "Snapshot",
     "World",
     "WorldInfo",
     "format_time",

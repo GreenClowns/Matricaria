@@ -12,6 +12,8 @@ from .constants import (
     CONTROLLERS,
     EQUIP_STATES,
     FACT_STATUSES,
+    HEIGHT_MAX_CM,
+    HEIGHT_MIN_CM,
     RELATION_SCALES,
     RULE_MODES,
     SCENARIO_TYPES,
@@ -90,7 +92,12 @@ CREATE TABLE stats (
     max_health   INTEGER NOT NULL CHECK (max_health >= 1),
     health       INTEGER NOT NULL CHECK (health BETWEEN 0 AND max_health),
     alive        INTEGER NOT NULL DEFAULT 1 CHECK (alive IN (0, 1)),
-    conditions   TEXT    NOT NULL DEFAULT '[]'
+    conditions   TEXT    NOT NULL DEFAULT '[]',
+    -- Тело (D38): рост в сантиметрах, мускулы и полнота 0–100, телосложение.
+    height_cm    INTEGER NOT NULL CHECK (height_cm BETWEEN {HEIGHT_MIN_CM} AND {HEIGHT_MAX_CM}),
+    muscles      INTEGER NOT NULL CHECK (muscles BETWEEN 0 AND 100),
+    fatness      INTEGER NOT NULL CHECK (fatness BETWEEN 0 AND 100),
+    build        TEXT    NOT NULL DEFAULT ''
 );
 
 -- Отношения from_id к to_id: пять шкал (D28) и знает ли имя.

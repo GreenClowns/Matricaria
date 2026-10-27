@@ -8,7 +8,7 @@ import json
 import sqlite3
 from dataclasses import dataclass, field
 
-from .constants import STATS
+from .constants import DEFAULT_BODY, STATS
 
 
 @dataclass(frozen=True)
@@ -68,6 +68,7 @@ class Character:
     health: int
     alive: bool
     conditions: tuple[str, ...]
+    body: dict = field(default_factory=dict)
     abilities: dict[str, dict] = field(default_factory=dict)
 
     @property
@@ -192,5 +193,19 @@ def character_from_rows(
         health=stats["health"],
         alive=bool(stats["alive"]),
         conditions=tuple(json.loads(stats["conditions"])),
+        body={key: stats[key] for key in DEFAULT_BODY},
         abilities={a["kind"]: json.loads(a["params"]) for a in abilities},
     )
+
+
+@dataclass(frozen=True)
+class Snapshot:
+    id: int
+    time: int
+    last_event_id: int | None
+    label: str
+    file: str
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "Snapshot":
+        return cls(**{key: row[key] for key in row.keys()})

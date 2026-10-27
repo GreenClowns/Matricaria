@@ -4,8 +4,12 @@ import json
 
 from .base import WorldBase, _require_choice
 from .constants import (
+    BODY_SCALES,
     CONTROLLERS,
+    DEFAULT_BODY,
     DEFAULT_STAT,
+    HEIGHT_MAX_CM,
+    HEIGHT_MIN_CM,
     IMMORTALITY,
     STAT_MAX,
     STAT_MIN,
@@ -60,6 +64,7 @@ class CharactersMixin(WorldBase):
         location_id: str | None = None,
         stats: dict[str, int] | None = None,
         max_health: int | None = None,
+        body: dict | None = None,
         personality: dict | None = None,
         cash: int = 0,
         bank: int = 0,
@@ -68,7 +73,11 @@ class CharactersMixin(WorldBase):
         basis: str = "author",
         actor_id: str | None = None,
     ) -> Character:
-        """Добавляет персонажа. Характеристики, которых нет в `stats`, равны 5."""
+        """Добавляет персонажа.
+
+        Характеристики, которых нет в `stats`, равны 5. В `body` можно задать
+        рост (`height_cm`), мускулы, полноту и телосложение (D38).
+        """
         if not character_id or not name.strip():
             raise RuleError("Character id and name cannot be empty")
         _require_choice("controller", controller, CONTROLLERS)
@@ -78,6 +87,7 @@ class CharactersMixin(WorldBase):
             values[stat] = value
         for stat, value in values.items():
             self._check_stat_value(stat, value)
+        body_values = self._check_body({**DEFAULT_BODY, **(body or {})})
         if max_health is None:
             max_health = default_max_health(values["endurance"])
         if max_health < 1:
@@ -109,10 +119,17 @@ class CharactersMixin(WorldBase):
                     bank,
                 ),
             )
+            columns = [*STATS, *DEFAULT_BODY]
             self._conn.execute(
-                f"INSERT INTO stats (character_id, {', '.join(STATS)}, max_health, health)"
-                f" VALUES (?, {', '.join('?' * len(STATS))}, ?, ?)",
-                (character_id, *(values[stat] for stat in STATS), max_health, max_health),
+                f"INSERT INTO stats (character_id, {', '.join(columns)}, max_health, health)"
+                f" VALUES (?, {', '.join('?' * len(columns))}, ?, ?)",
+                (
+                    character_id,
+                    *(values[stat] for stat in STATS),
+                    *(body_values[key] for key in DEFAULT_BODY),
+                    max_health,
+                    max_health,
+                ),
             )
             self._record(
                 "character_added",
@@ -127,6 +144,7 @@ class CharactersMixin(WorldBase):
                     "location_id": location_id,
                     "stats": values,
                     "max_health": max_health,
+                    "body": body_values,
                     "cash": cash,
                     "bank": bank,
                 },
@@ -213,6 +231,58 @@ class CharactersMixin(WorldBase):
                 actor_id=actor_id,
                 participants=[character_id],
                 data={"stat": stat, "from": old, "to": value},
+            )
+
+    # --- Тело (D38) ----------------------------------------------------
+
+    @staticmethod
+    def _check_body(body: dict) -> dict:
+        for key in body:
+            if key not in DEFAULT_BODY:
+                raise RuleError(
+                    f"Unknown body part '{key}'; expected one of: {', '.join(DEFAULT_BODY)}"
+                )
+        height = body["height_cm"]
+        if not isinstance(height, int) or not HEIGHT_MIN_CM <= height <= HEIGHT_MAX_CM:
+            raise RuleError(f"Height must be from {HEIGHT_MIN_CM} cm to 500 m, got {height}")
+        for scale in BODY_SCALES:
+            if not isinstance(body[scale], int) or not 0 <= body[scale] <= 100:
+                raise RuleError(f"{scale} must be from 0 to 100, got {body[scale]}")
+        body["build"] = str(body["build"]).strip()
+        return body
+
+    def set_body(
+        self,
+        character_id: str,
+        *,
+        basis: str = "author",
+        actor_id: str | None = None,
+        **changes,
+    ) -> None:
+        """Меняет рост, мускулы, полноту или телосложение.
+
+        По правилам тело само не меняется: зелье роста и тренировки
+        появятся вместе с правилами тела в 0.5.
+        """
+        if not changes:
+            raise RuleError("Nothing to change")
+        with self._change():
+            self._character_row(character_id)
+            self._check_basis(basis, actor_id, action="Changing the body", rules_allow=False)
+            old = self.character(character_id).body
+            new = self._check_body({**old, **changes})
+            for key in changes:
+                self._conn.execute(
+                    f"UPDATE stats SET {key} = ? WHERE character_id = ?",
+                    (new[key], character_id),
+                )
+            self._record(
+                "body_changed",
+                basis=basis,
+                actor_id=actor_id,
+                participants=[character_id],
+                data={"from": {key: old[key] for key in changes},
+                      "to": {key: new[key] for key in changes}},
             )
 
     # --- Здоровье и смерть -----------------------------------------------

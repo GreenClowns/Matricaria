@@ -354,3 +354,30 @@ class ItemsMixin(WorldBase):
                 participants=[character_id],
                 data={"amount": amount, "account": account, "reason": reason},
             )
+
+    def remove_item(
+        self,
+        item_id: int,
+        *,
+        basis: str = "author",
+        actor_id: str | None = None,
+        reason: str = "",
+    ) -> None:
+        """Предмет исчезает из мира: волей автора или чудом. Запись о нём остаётся в журнале."""
+        with self._change():
+            item = self._item_row(item_id)
+            self._check_basis(basis, actor_id, action="Making an item vanish", rules_allow=False)
+            self._conn.execute("DELETE FROM item WHERE id = ?", (item_id,))
+            self._record(
+                "item_removed",
+                basis=basis,
+                actor_id=actor_id,
+                participants=[p for p in (item["owner_id"], item["location_id"]) if p],
+                data={
+                    "item_id": item_id,
+                    "name": item["name"],
+                    "owner_id": item["owner_id"],
+                    "location_id": item["location_id"],
+                    "reason": reason,
+                },
+            )

@@ -2,10 +2,12 @@
 name = "matricaria"
 version = "0.1.0"
 description = "Ядро Matricaria: мир, симуляция, ИИ и валидатор"
-readme = "../README.md"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.12"
 dependencies = []
+
+[project.scripts]
+matricaria = "matricaria.cli:main"
 
 [build-system]
 requires = ["hatchling"]

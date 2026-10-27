@@ -41,6 +41,12 @@ RELATION_SCALES = {
     "love": (0, 100),
 }
 
+# Тело (D38): рост от 1 см до 500 м, мускулы и полнота 0–100.
+HEIGHT_MIN_CM = 1
+HEIGHT_MAX_CM = 50_000
+BODY_SCALES = ("muscles", "fatness")
+DEFAULT_BODY = {"height_cm": 170, "muscles": 30, "fatness": 30, "build": "average"}
+
 # Отметка у предмета: в руках или надето (docs/02-game-design.md).
 EQUIP_STATES = ("held", "worn")
 
