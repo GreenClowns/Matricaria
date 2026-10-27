@@ -1,0 +1,152 @@
+# Стартовый мир «Кленовая улица» (современность) для версии 0.3.
+# Тексты — по-английски (D40). Деньги — в центах.
+
+[world]
+name = "Maple Street"
+setting = "modern"
+
+[[locations]]
+id = "maple"
+name = "Maple Street"
+kind = "street"
+
+[[locations]]
+id = "cafe"
+name = "Bean There Cafe"
+kind = "cafe"
+parent = "maple"
+
+[[locations]]
+id = "precinct"
+name = "12th Precinct"
+kind = "police station"
+parent = "maple"
+
+[[locations]]
+id = "clinic"
+name = "Maple Clinic"
+kind = "clinic"
+parent = "maple"
+
+[[locations]]
+id = "park"
+name = "Maple Park"
+kind = "park"
+parent = "maple"
+
+[[characters]]
+id = "hero"
+name = "Alex"
+controller = "player"
+role = "new in town"
+profession = "barista"
+location = "maple"
+cash = 2000
+bank = 50000
+personality = { traits = ["friendly", "restless"] }
+
+[[characters]]
+id = "nina"
+name = "Nina"
+role = "cafe owner"
+profession = "barista"
+location = "cafe"
+cash = 15000
+bank = 900000
+stats = { charisma = 8 }
+personality = { traits = ["cheerful", "gossip"] }
+
+[[characters]]
+id = "ross"
+name = "Detective Ross"
+role = "detective"
+profession = "detective"
+location = "precinct"
+cash = 6000
+bank = 300000
+stats = { intellect = 8, endurance = 6 }
+personality = { traits = ["tired", "sharp"] }
+
+[[characters]]
+id = "kim"
+name = "Dr. Kim"
+role = "doctor"
+profession = "doctor"
+location = "clinic"
+cash = 9000
+bank = 1200000
+stats = { intellect = 9, agility = 4 }
+abilities = [{ kind = "talent:photographic memory" }]
+personality = { traits = ["calm", "curious"] }
+
+[[items]]
+kind = "phone"
+name = "Cracked smartphone"
+owner = "hero"
+price = 15000
+
+[[items]]
+kind = "drink"
+name = "Iced latte"
+owner = "nina"
+price = 450
+
+[[items]]
+kind = "weapon"
+name = "Service pistol"
+owner = "ross"
+price = 50000
+damage = [3, 12]
+equipped = "worn"
+
+[[items]]
+kind = "badge"
+name = "Detective badge"
+owner = "ross"
+price = 0
+equipped = "worn"
+
+[[items]]
+kind = "document"
+name = "Torn lab notes"
+location = "park"
+price = 0
+
+[[relations]]
+from = "nina"
+to = "ross"
+liking = 40
+trust = 30
+knows_name = true
+
+[[relations]]
+from = "ross"
+to = "kim"
+liking = 20
+respect = 60
+knows_name = true
+
+[[facts]]
+subject = "nina"
+predicate = "sibling"
+object = "kim"
+known_by = ["nina", "kim"]
+
+[[facts]]
+subject = "park"
+predicate = "found_there"
+object = "torn lab notes about a growth formula"
+known_by = []
+
+[[facts]]
+subject = "kim"
+predicate = "secret_project"
+object = "growth formula"
+status = "rumor"
+known_by = ["nina"]
+
+[[facts]]
+subject = "ross"
+predicate = "investigating"
+object = "break-in at the clinic"
+known_by = ["ross", "kim"]

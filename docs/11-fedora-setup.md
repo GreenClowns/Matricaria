@@ -37,4 +37,40 @@ git clone https://github.com/GreenClowns/Matricaria.git
 cd Matricaria
 ```
 
+## 5. Ядро мира в терминале (версия 0.3)
+
+Всё запускается из папки `Matricaria`. Миры сохраняются в `saves/<имя>/world.db`, снимки — рядом, в `saves/<имя>/snapshots/`.
+
+```bash
+uv run --project core matricaria --help          # список команд
+uv run --project core matricaria new demo        # мир «Alder Village» (фэнтези)
+uv run --project core matricaria new town --template city   # «Maple Street» (современность)
+uv run --project core matricaria status demo     # время, герой, места, кто где
+uv run --project core matricaria show demo boris # лист персонажа и что он знает
+uv run --project core matricaria log demo        # журнал событий
+```
+
+Снимки и откат:
+
+```bash
+uv run --project core matricaria snapshot demo "before the fight"
+uv run --project core matricaria kill demo hero
+uv run --project core matricaria rollback demo 1
+```
+
+Команды рассказчика (пишутся в журнал с основанием `author`): `revive`, `kill`, `health`, `give`, `take`, `money`, `move`, `stat`, `body`, `relation`, `ability`, `controller`, `fact`, `teach`, `rules`, `wait`. Подсказка по любой команде: `matricaria <команда> --help`.
+
+Чтобы не писать каждый раз длинное начало, можно завести короткое имя (действует до закрытия терминала):
+
+```bash
+alias mx='uv run --project core matricaria'
+mx status demo
+```
+
+Тесты ядра:
+
+```bash
+uv run --no-project --with pytest pytest tests -q
+```
+
 Дальнейшие шаги появятся по мере разработки.
