@@ -4,7 +4,10 @@ version = "0.1.0"
 description = "Ядро Matricaria: мир, симуляция, ИИ и валидатор"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    # Связь с окном Godot (D5). Лицензия BSD-3-Clause.
+    "websockets>=13",
+]
 
 [project.scripts]
 matricaria = "matricaria.cli:main"

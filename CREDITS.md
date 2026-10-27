@@ -14,6 +14,7 @@
 | [llama.cpp](https://github.com/ggml-org/llama.cpp) | MIT | Локальная текстовая модель |
 | [stable-diffusion.cpp](https://github.com/leejet/stable-diffusion.cpp) | MIT | Локальная генерация изображений |
 | [SQLite](https://sqlite.org) | Public domain | База данных мира |
+| [websockets](https://github.com/python-websockets/websockets) | BSD-3-Clause | Связь ядра с окном Godot |
 
 ## Графика
 
