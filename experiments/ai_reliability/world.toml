@@ -1,0 +1,301 @@
+# Тестовый мир эксперимента 0.2 — деревня Ольховка.
+# Мир не меняется между прогонами: все модели получают одно и то же.
+#
+# known_by: кто знает факт ("all" — все жители деревни).
+# status:   truth — правда; lie — ложь персонажа (told_by — кто её рассказывает);
+#           belief — персонаж в это верит, но это не обязательно правда.
+
+[world]
+name = "Ольховка"
+setting = "Небольшая деревня в лесном краю, позднее лето, время — вечер."
+rules = [
+  "Мир обычный, без магии, драконов, эльфов и чудовищ. Опасные звери — волки.",
+  "Деньги — медные монеты.",
+  "Умершие не возвращаются.",
+]
+
+[player]
+id = "kira"
+
+[[locations]]
+id = "tavern"
+name = "таверна «Сонный кабан»"
+
+[[locations]]
+id = "square"
+name = "площадь"
+
+[[locations]]
+id = "mill"
+name = "мельница"
+
+[[locations]]
+id = "smithy"
+name = "кузница (закрыта)"
+
+[[characters]]
+id = "boris"
+name = "Борис"
+role = "трактирщик, хозяин таверны «Сонный кабан»"
+personality = "ворчливый, недоверчивый, но честный; любит порядок и деньги"
+speech = "коротко, ворчит, часто вздыхает и жалуется на дела"
+location = "tavern"
+alive = true
+money = 40
+abilities = []
+
+[[characters]]
+id = "lina"
+name = "Лина"
+role = "стражница деревни"
+personality = "честная, прямая, серьёзная; никогда не врёт"
+speech = "спокойно и по делу, без лишних слов"
+location = "square"
+alive = true
+money = 8
+abilities = []
+
+[[characters]]
+id = "yan"
+name = "Ян"
+role = "мельник"
+personality = "болтливый, хитрый, иногда привирает ради выгоды"
+speech = "многословно, с шутками и прибаутками, перескакивает с темы на тему"
+location = "mill"
+alive = true
+money = 25
+abilities = []
+
+[[characters]]
+id = "kira"
+name = "Кира"
+role = "путешественница, герой игрока"
+personality = ""
+speech = ""
+location = "tavern"
+alive = true
+money = 30
+abilities = []
+
+[[characters]]
+id = "gordey"
+name = "Гордей"
+role = "кузнец"
+personality = ""
+speech = ""
+location = "smithy"
+alive = false
+money = 0
+abilities = []
+
+[[items]]
+id = "room_key"
+name = "ключ от комнаты в таверне"
+owner = "boris"
+
+[[items]]
+id = "lina_sword"
+name = "меч стражницы"
+owner = "lina"
+
+[[items]]
+id = "grain_sack"
+name = "мешок зерна"
+owner = "yan"
+
+[[items]]
+id = "kira_waterskin"
+name = "фляга с водой"
+owner = "kira"
+
+# --- Факты ---
+
+[[facts]]
+id = "room_price"
+subject = "tavern"
+predicate = "room_price"
+object = "20"
+text = "Комната в таверне «Сонный кабан» стоит 20 монет за ночь."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "ale_price"
+subject = "tavern"
+predicate = "ale_price"
+object = "2"
+text = "Кружка эля в таверне стоит 2 монеты."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "tavern_hours"
+subject = "tavern"
+predicate = "open_hours"
+object = "с утра до полуночи"
+text = "Таверна открыта с утра до полуночи."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "stew_today"
+subject = "tavern"
+predicate = "dish_today"
+object = "грибная похлёбка"
+text = "Сегодня в таверне на ужин грибная похлёбка."
+status = "truth"
+known_by = ["boris"]
+
+[[facts]]
+id = "boris_wife"
+subject = "boris"
+predicate = "wife"
+object = "Марта"
+text = "Жену Бориса зовут Марта, она печёт хлеб для таверны."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "gordey_dead"
+subject = "gordey"
+predicate = "alive"
+object = "нет"
+text = "Кузнец Гордей умер 10 дней назад от лихорадки. Его похоронили за деревней."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "smithy_closed"
+subject = "smithy"
+predicate = "state"
+object = "закрыта"
+text = "После смерти Гордея кузница закрыта, нового кузнеца в деревне нет."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "drought"
+subject = "olkhovka"
+predicate = "weather"
+object = "засуха"
+text = "Уже месяц нет дождя, в округе засуха, река обмелела."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "wolves"
+subject = "east_forest"
+predicate = "danger"
+object = "волки"
+text = "В лесу к востоку от деревни появилась стая волков."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "lina_wounded"
+subject = "lina"
+predicate = "wound"
+object = "левая рука"
+text = "Три дня назад волки ранили Лину в левую руку, рука перевязана."
+status = "truth"
+known_by = ["lina", "yan"]
+
+[[facts]]
+id = "lina_only_guard"
+subject = "lina"
+predicate = "job"
+object = "единственная стражница"
+text = "Лина — единственная стражница Ольховки."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "wedding"
+subject = "tavern"
+predicate = "last_celebration"
+object = "свадьба Сони и Петра"
+text = "Неделю назад в таверне гуляли свадьбу Сони и Петра, плясали до утра."
+status = "truth"
+known_by = ["boris", "yan"]
+
+[[facts]]
+id = "lina_patrol"
+subject = "lina"
+predicate = "last_week"
+object = "дозор на восточной дороге"
+text = "Всю прошлую неделю Лина стояла в дозоре на восточной дороге и в деревню не заходила."
+status = "truth"
+known_by = ["lina"]
+
+[[facts]]
+id = "mill_place"
+subject = "mill"
+predicate = "place"
+object = "на реке к северу от площади"
+text = "Мельница стоит на реке к северу от площади."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "elder_away"
+subject = "foma"
+predicate = "where"
+object = "уехал в город"
+text = "Староста Фома уехал в город и вернётся через две недели."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "fair"
+subject = "dubki"
+predicate = "event"
+object = "ярмарка через 5 дней"
+text = "Через 5 дней в соседнем селе Дубки будет ярмарка."
+status = "truth"
+known_by = ["all"]
+
+[[facts]]
+id = "yan_debt"
+subject = "yan"
+predicate = "debt_to_boris"
+object = "10"
+text = "Ян должен Борису 10 монет за эль."
+status = "truth"
+known_by = ["boris", "yan"]
+
+[[facts]]
+id = "grain_price_secret"
+subject = "yan"
+predicate = "grain_price"
+object = "15"
+text = "Ян продаёт мешок зерна за 15 монет — втрое дороже обычного, а дороговизну объясняет погибшим урожаем. Его тайна — что амбары на самом деле полны."
+status = "truth"
+known_by = ["yan"]
+
+[[facts]]
+id = "harvest_truth"
+subject = "olkhovka"
+predicate = "harvest"
+object = "средний"
+text = "Урожай в этом году средний, амбары у мельницы полны зерна."
+status = "truth"
+known_by = ["yan", "lina"]
+
+[[facts]]
+id = "harvest_lie"
+subject = "olkhovka"
+predicate = "harvest"
+object = "погиб"
+text = "Урожай погиб от засухи, зерна почти не осталось."
+status = "lie"
+told_by = "yan"
+known_by = ["yan"]
+
+[[facts]]
+id = "harvest_belief"
+subject = "olkhovka"
+predicate = "harvest"
+object = "погиб"
+text = "Ян говорит, что урожай погиб, и Борис ему верит."
+status = "belief"
+known_by = ["boris"]

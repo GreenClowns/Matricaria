@@ -1,0 +1,101 @@
+# Модели для эксперимента 0.2. Этот файл попадает в git, ключей здесь НЕТ.
+# Ключи лежат в файле .env рядом (образец — .env.example).
+#
+# url             — адрес OpenAI-совместимого сайта (без /chat/completions на конце);
+# model           — точное имя модели на этом сайте;
+# key_env         — имя строки в .env с ключом ("" — ключ не нужен);
+# price_in/out    — цена в долларах за 1 млн токенов (вход / выход), смотреть на сайте;
+# response_format — json_schema (строгая схема), json_object или none.
+#                   Если сайт не поймёт схему, скрипт сам перейдёт на формат попроще.
+#
+# Чтобы прогнать модель через OpenRouter, поменяйте url на
+# https://openrouter.ai/api/v1 и key_env на OPENROUTER_API_KEY.
+
+# Цены ниже — по открытым прайсам (OpenRouter и сайты разработчиков, октябрь 2026).
+# На NanoGPT они могут немного отличаться — сверьте на сайте.
+# max_tokens с запасом: модели могут «размышлять» перед ответом.
+
+[profiles.A]
+name = "Сильная модель: GLM-5.3 (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "z-ai/glm-5.3"
+key_env = "NANOGPT_API_KEY"
+price_in = 1.40
+price_out = 4.40
+response_format = "json_schema"
+max_tokens = 4000
+
+[profiles.B]
+name = "Дешёвая модель: DeepSeek V4.1 Flash (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "deepseek/deepseek-v4.1-flash-1017"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.30
+price_out = 1.20
+response_format = "json_schema"
+max_tokens = 4000
+
+# Открытая модель среднего размера: её младших «родственников» можно запускать локально,
+# поэтому она полезна для сравнения с вариантами C и D.
+[profiles.gemma]
+name = "Gemma 4 31B (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "google/gemma-4-31b-it"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.12
+price_out = 0.35
+response_format = "json_schema"
+max_tokens = 4000
+
+# Модель, которую автор захотел испробовать: Xiaomi MiMo V2.6 Pro.
+# Имя модели проверьте командой: python3 list_models.py mimo
+# Цены взяты с OpenRouter ($0.435 / $0.87 за 1 млн токенов); на NanoGPT сверьте на сайте.
+# Модель умеет «размышлять» перед ответом, поэтому max_tokens больше обычного.
+[profiles.mimo]
+name = "Xiaomi MiMo V2.6 Pro (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "xiaomi/mimo-v2.6-pro"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.435
+price_out = 0.87
+response_format = "json_schema"
+max_tokens = 4000
+
+# Та же MiMo, но без размышлений: должна отвечать быстрее, вопрос — не хуже ли.
+# reasoning_effort = "none" по документации NanoGPT выключает размышления.
+[profiles.mimo-fast]
+name = "Xiaomi MiMo V2.6 Pro без размышлений (API, NanoGPT)"
+url = "https://nano-gpt.com/api/v1"
+model = "xiaomi/mimo-v2.6-pro"
+key_env = "NANOGPT_API_KEY"
+price_in = 0.435
+price_out = 0.87
+response_format = "json_schema"
+max_tokens = 1000
+extra = { reasoning_effort = "none" }
+
+# Локальные модели: llama-server из llama.cpp на компьютере автора.
+# Имя модели llama-server не проверяет, оно нужно только для отчёта.
+[profiles.C]
+name = "Модель 7–8B (локально, llama.cpp)"
+url = "http://127.0.0.1:8080/v1"
+model = "local-7b"
+key_env = ""
+response_format = "json_schema"
+timeout = 300.0
+
+[profiles.D]
+name = "Модель 3–4B (локально, llama.cpp)"
+url = "http://127.0.0.1:8080/v1"
+model = "local-3b"
+key_env = ""
+response_format = "json_schema"
+timeout = 300.0
+
+# Поддельная модель для проверки самого скрипта: без сети и без денег.
+[profiles.fake]
+name = "Поддельная модель (проверка скрипта)"
+url = "fake://"
+model = "fake"
+price_in = 1.0
+price_out = 2.0
