@@ -20,6 +20,9 @@ from llm import ChatClient, LLMError, load_env, load_profiles, make_client
 from prompting import extract_json
 from world import World, load_world
 
+# Версия подсказки судьи. Оценки старой версии переделываются автоматически.
+JUDGE_VERSION = 2
+
 
 def judge_prompt(world: World) -> str:
     truth = "\n".join(f"- {f.text}" for f in world.truth())
@@ -127,20 +130,23 @@ def ask_judge(client: ChatClient, world: World, case: Case, record: dict, which:
 
 
 def evaluate(records: list[dict], cases: dict[str, Case], world: World,
-             judge: ChatClient | None, judge_id: str, force: bool, max_cost: float) -> float:
+             judge: ChatClient | None, judge_id: str, force: bool, max_cost: float,
+             save=lambda: None) -> float:
+    """Оценивает реплики; save() вызывается после каждой новой оценки судьи."""
     spent = 0.0
     for n, record in enumerate(records, 1):
         case = cases[record["case_id"]]
         ev = record.setdefault("eval", {})
         ev["rules"] = rules_eval(case, record)
         ev["invalid_actions"] = {w: invalid_actions(record["turns"], w) for w in ("raw", "final")}
-        if judge is None or (ev.get("judge") and not force):
+        old = ev.get("judge") or {}
+        if judge is None or (old.get("version") == JUDGE_VERSION and not force):
             continue
         if spent >= max_cost:
             print(f"Остановка судьи: потрачено ${spent:.4f}, предел ${max_cost}.")
             judge = None
             continue
-        result = {"by": judge_id}
+        result = {"by": judge_id, "version": JUDGE_VERSION}
         try:
             for which in ("raw", "final"):
                 if all(t[which]["reply"] is None for t in record["turns"]):
@@ -158,6 +164,7 @@ def evaluate(records: list[dict], cases: dict[str, Case], world: World,
             judge = None
             continue
         ev["judge"] = result
+        save()
         print(f"[{n}/{len(records)}] {record['case_id']}: raw={result['raw']['ok']} final={result['final']['ok']}")
     return spent
 
@@ -185,14 +192,18 @@ def main(argv: list[str] | None = None) -> int:
         with open(path, encoding="utf-8") as fh:
             records = [json.loads(line) for line in fh if line.strip()]
         print(f"Файл {path}: {len(records)} реплик")
-        try:
-            spent = evaluate(records, cases, world, judge, args.judge, args.force, args.max_cost)
-        finally:
+
+        def save(path=path, records=records):
             tmp = path.with_suffix(".tmp")
             with open(tmp, "w", encoding="utf-8") as fh:
                 for r in records:
                     fh.write(json.dumps(r, ensure_ascii=False) + "\n")
             tmp.replace(path)
+
+        try:
+            spent = evaluate(records, cases, world, judge, args.judge, args.force, args.max_cost, save)
+        finally:
+            save()
         print(f"Судья потратил ${spent:.4f}")
     return 0
 

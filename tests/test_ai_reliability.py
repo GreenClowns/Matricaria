@@ -289,3 +289,24 @@ def test_remember_text_in_wrong_field_is_accepted(world):
     act = {"type": "remember", "target": "Кира спрашивала про Гордея", "text": "", "item": ""}
     assert oks(world, "lina", [act]) == [True]
     assert oks(world, "lina", [{"type": "remember", "text": " "}]) == [False]
+
+
+def test_judge_saves_progress_and_skips_current_version(tmp_path, world):
+    import judge
+    out = tmp_path / "fake.jsonl"
+    assert run.main(["--model", "fake", "--limit", "3", "--out", str(out)]) == 0
+    records = [json.loads(line) for line in out.read_text(encoding="utf-8").splitlines()]
+    cases = {c.id: c for c in load_cases()}
+    client = ScriptedClient(['{"ok": true, "reason": "да"}'] * 6)
+    saves = []
+    judge.evaluate(records, cases, world, client, "s", False, 10.0, lambda: saves.append(1))
+    assert len(saves) == 3
+    assert all(r["eval"]["judge"]["version"] == judge.JUDGE_VERSION for r in records)
+    # Повторный запуск не тратит деньги на уже оценённое текущей версией.
+    before = len(client.seen)
+    judge.evaluate(records, cases, world, client, "s", False, 10.0)
+    assert len(client.seen) == before
+    # Оценка старой версии переделывается.
+    records[0]["eval"]["judge"]["version"] = 1
+    judge.evaluate(records, cases, world, client, "s", False, 10.0)
+    assert len(client.seen) > before
