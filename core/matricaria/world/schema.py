@@ -64,7 +64,7 @@ CREATE TABLE location (
     discovered_by TEXT    REFERENCES character(id)
 );
 
--- Герои и NPC. Деньги: наличные и на счёте (D37).
+-- Герои и NPC. Деньги: наличные и на счёте (D41).
 CREATE TABLE character (
     id          TEXT    PRIMARY KEY,
     name        TEXT    NOT NULL,
