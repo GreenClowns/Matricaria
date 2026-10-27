@@ -1,0 +1,81 @@
+# 15. Задание для нейросети: графика
+
+Что и как генерировать, чтобы картинки подошли игре. Эталон стиля — картинки автора (решение D48): портреты Ивы, Бориса, бабушки Нины и лист кадров Ивы. Автор генерирует в Nano Banana (подписка) или ChatGPT; обработку (пиксельная сетка, палитра, фон, нарезка кадров) делает Claude.
+
+## Общие правила для всех картинок
+
+1. **Прикладывайте образец стиля.** Для спрайтов — лист кадров Ивы, для портретов — портрет Ивы. Пишите: «точно в том же стиле, что на образце».
+2. **Фон — сплошной одноцветный**, лучше ярко-розовый `#FF00FF` (его легко вырезать). **Не шахматка** и не «прозрачный фон»: нейросеть рисует шахматку прямо на картинке.
+3. **Без текста, подписей, рамок и водяных знаков.** Если в углу появился значок сервиса — ничего страшного, обрежем.
+4. **Один персонаж — одна картинка.** Не смешивайте разных персонажей на одном листе.
+5. **Лист кадров — ровная сетка**: кадры одного размера, ноги на одной линии, между кадрами пустое место.
+6. **Свет слева сверху**, тёмный контур, приглушённая «осенняя» палитра — как у образца.
+7. **Сохраняйте в самом большом размере**, без сжатия и без дополнительного увеличения.
+
+## Порядок работы
+
+### Шаг 1. Пробная партия (проверяем, держит ли нейросеть стиль)
+
+1. Лист кадров **Бориса** по образцу листа Ивы.
+2. Набор **модулей зданий** (одна картинка).
+3. Две **основы тела**: женская и мужская, обычное телосложение.
+
+Пришлите — Claude обработает и покажет в макете. Если стиль держится, переходим к шагу 2.
+
+### Шаг 2. Важные персонажи
+
+Для каждого: портрет по грудь, 5 эмоций, лист кадров. Персонажи (фэнтези-деревня Ольховка):
+
+| Имя | Кто | Внешность |
+|---|---|---|
+| Борис | трактирщик | крепкий мужчина ~45 лет, каштановые волосы, густая борода, белая рубаха, кожаный фартук, кружка в руке |
+| Лина | стражница | женщина ~25 лет, короткие чёрные волосы, янтарные глаза, стальная кираса, меч, шрам на щеке |
+| Ян | мельник | парень ~22 лет, пшеничные волосы, веснушки, соломенная шляпа, бежевая туника, мешок муки |
+| Мора | ведьма | длинные лавандовые волосы, зелёные глаза, тёмно-фиолетовая мантия, остроконечная шляпа, посох с зелёным кристаллом |
+| Грон | кузнец | лысый, чёрная борода, мощные руки, кожаный фартук, молот |
+| Вук | разбойник, противник | лысый, чёрная борода, очень мускулистый, кожаный жилет без рукавов, шрамы |
+| Сет | подручный, противник | худой, зелёный капюшон, кинжал, хитрое лицо |
+| Аня | бариста (современность) | серые волосы в два хвостика, красные глаза, белая рубашка, коричневый фартук |
+
+### Шаг 3. Набор деталей для обычных жителей (решение о сборке — после пробы)
+
+- **Основы тела**: женские — 4 телосложения (худое, обычное, мускулистое, полное) × 3 размера груди; мужские — 4 телосложения. Все в одинаковом простом сером облегающем костюме, одна и та же поза и сетка кадров.
+- **Причёски** (10), **головные уборы** (8), **бороды и усы**, **очки** — каждая деталь отдельно, на той же сетке кадров, что основа тела.
+- **Одежда** (10 нарядов) — под каждое из 4 телосложений.
+
+### Шаг 4. Здания и земля
+
+- **Модули зданий** (вид сверху под углом, как на макете деревни): стены — штукатурка с брусом, камень, брёвна; крыши — красная черепица, синий сланец, солома; двери, окна со ставнями, трубы, вывески, балконы.
+- **Тайлы земли** (бесшовные квадраты): трава, грунтовая дорога, брусчатка, вода, песок, пол таверны.
+
+## Подсказки (копируйте и меняйте описание)
+
+**Лист кадров персонажа** (приложите лист Ивы):
+```
+Pixel art sprite sheet in exactly the same style as the attached reference: chibi proportions, dark outline, light from top-left, muted autumn palette. One character only: [DESCRIPTION]. Same grid layout as the reference: idle, walk (4 frames), sword/weapon attack, hit reaction, defeated lying down, 4 idle gestures. All frames the same size, feet on the same baseline, empty space between frames. Solid flat magenta #FF00FF background, no checkerboard, no text, no frame.
+```
+
+**Портрет** (приложите портрет Ивы):
+```
+Pixel art bust portrait in exactly the same style as the attached reference: three-quarter view, detailed anime-style face, clean dark outlines, cel shading, light from top-left. Character: [DESCRIPTION]. Square image, solid flat light beige background, no text, no border.
+```
+
+**Эмоции** (приложите портрет этого персонажа):
+```
+Five versions of the attached pixel art portrait side by side, same character, same pose and framing, only the facial expression changes: neutral, happy, angry, surprised, sad. Same style, solid flat light beige background, no text.
+```
+
+**Основа тела** (приложите лист Ивы):
+```
+Pixel art sprite sheet, same style and same grid layout as the attached reference, a neutral base body for a character creator: [female/male], [slim/average/muscular/plump] build, [small/medium/large] bust, plain grey fitted bodysuit, no hair, simple face. Same frames as the reference. Solid flat magenta #FF00FF background, no text.
+```
+
+**Модули зданий** (приложите картинку деревни из макета):
+```
+Pixel art building kit for a top-down 3/4 view RPG village, same style as the attached reference: separate pieces on one sheet with space between them — plaster wall with timber frame, stone wall, log wall, red tile roof, blue slate roof, thatched roof, wooden door, window with shutters, chimney, hanging shop sign. Light from top-left, dark outlines. Solid flat magenta #FF00FF background, no text.
+```
+
+**Тайлы земли**:
+```
+Pixel art seamless tiles for a top-down RPG, same style as the attached reference: grass, dirt road, cobblestone, water, sand, wooden tavern floor. Each tile a separate square on one sheet with space between them. Solid flat magenta #FF00FF background, no text.
+```
