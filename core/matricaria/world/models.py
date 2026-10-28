@@ -9,6 +9,7 @@ import sqlite3
 from dataclasses import dataclass, field
 
 from .constants import DEFAULT_BODY, STATS
+from .measures import bra_size
 
 
 @dataclass(frozen=True)
@@ -79,6 +80,11 @@ class Character:
 
     def has_ability(self, kind: str) -> bool:
         return kind in self.abilities
+
+    @property
+    def bra_size(self) -> str | None:
+        """Размер бюстгальтера (США) из обхватов; None, если обхватов нет."""
+        return bra_size(self.body.get("bust_cm"), self.body.get("underbust_cm"))
 
 
 @dataclass(frozen=True)

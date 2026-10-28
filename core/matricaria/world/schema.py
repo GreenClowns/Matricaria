@@ -2,7 +2,8 @@
 
 Версия схемы хранится в самой базе (`PRAGMA user_version`).
 Старое сохранение обновляется до новой схемы миграцией — шагом из `MIGRATIONS`.
-Версии: 1 — ядро мира (0.3), 2 — дом, работа и состояние жителей (0.4).
+Версии: 1 — ядро мира (0.3), 2 — дом, работа и состояние жителей (0.4),
+3 — обхваты тела (0.4, идея И1).
 """
 
 import sqlite3
@@ -14,6 +15,9 @@ from .constants import (
     FACT_STATUSES,
     HEIGHT_MAX_CM,
     HEIGHT_MIN_CM,
+    MEASURE_MAX_CM,
+    MEASURE_MIN_CM,
+    MEASUREMENTS,
     RELATION_SCALES,
     RULE_MODES,
     SCENARIO_TYPES,
@@ -24,7 +28,7 @@ from .constants import (
 )
 from .errors import SchemaError
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def _one_of(values: tuple[str, ...]) -> str:
@@ -39,6 +43,13 @@ def _stat(name: str) -> str:
 def _scale(name: str) -> str:
     low, high = RELATION_SCALES[name]
     return f"{name} INTEGER NOT NULL DEFAULT 0 CHECK ({name} BETWEEN {low} AND {high})"
+
+
+def _measure(name: str) -> str:
+    return f"{name} INTEGER CHECK ({name} BETWEEN {MEASURE_MIN_CM} AND {MEASURE_MAX_CM})"
+
+
+MEASURE_COLUMNS = ",\n    ".join(_measure(name) for name in MEASUREMENTS)
 
 
 def _need(name: str) -> str:
@@ -123,7 +134,9 @@ CREATE TABLE stats (
     height_cm    INTEGER NOT NULL CHECK (height_cm BETWEEN {HEIGHT_MIN_CM} AND {HEIGHT_MAX_CM}),
     muscles      INTEGER NOT NULL CHECK (muscles BETWEEN 0 AND 100),
     fatness      INTEGER NOT NULL CHECK (fatness BETWEEN 0 AND 100),
-    build        TEXT    NOT NULL DEFAULT ''
+    build        TEXT    NOT NULL DEFAULT '',
+    -- Обхваты в сантиметрах (идея И1); NULL — не задано.
+    {MEASURE_COLUMNS}
 );
 
 -- Отношения from_id к to_id: пять шкал (D28) и знает ли имя.
@@ -229,6 +242,8 @@ ALTER TABLE character ADD COLUMN work_id TEXT REFERENCES location(id);
 UPDATE character SET home_id = location_id, work_id = location_id WHERE controller = 'ai';
 {NPC_STATE}
 """,
+    # Обхваты тела (идея И1): у старых персонажей не заданы.
+    2: ";\n".join(f"ALTER TABLE stats ADD COLUMN {_measure(name)}" for name in MEASUREMENTS),
 }
 
 

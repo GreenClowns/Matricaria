@@ -177,6 +177,7 @@ def character_sheet(world: World, character_id: str) -> dict:
         "conditions": list(c.conditions),
         "stats": c.stats,
         "body": c.body,
+        "bra_size": c.bra_size,
         "cash": c.cash,
         "bank": c.bank,
         "abilities": list(c.abilities),

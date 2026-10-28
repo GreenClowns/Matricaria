@@ -36,6 +36,9 @@ var _tabs := TabContainer.new()
 var _speed := 0
 var _tick_in := TICK_SECONDS
 var _tick_pending := false
+var _inches := false  # обхваты в дюймах; в ядре всегда сантиметры
+var _last_sheet: Dictionary = {}
+var _units: Button
 var _screenshot_path := ""
 var _screenshot_frames := -1
 
@@ -94,6 +97,9 @@ func _build_ui() -> void:
 	bar.add_child(_button("+1 hour", func(): core.send("time.skip", {"minutes": 60})))
 	bar.add_child(_button("+1 day", func(): core.send("time.skip", {"minutes": 1440})))
 	bar.add_child(_button("+1 week", func(): core.send("time.skip", {"minutes": 10080})))
+	_units = _button("cm", _toggle_units)
+	_units.tooltip_text = "Measurements in centimetres or inches"
+	bar.add_child(_units)
 	bar.add_child(_label("Rules:"))
 	for mode in RULE_MODES:
 		_rules.add_item(mode)
@@ -156,6 +162,13 @@ func _on_connected() -> void:
 	core.send("world.get")
 
 
+func _toggle_units() -> void:
+	_inches = not _inches
+	_units.text = "in" if _inches else "cm"
+	if not _last_sheet.is_empty():
+		_show_sheet(_last_sheet)
+
+
 func _set_speed(speed: int) -> void:
 	_speed = speed
 	_tick_in = TICK_SECONDS
@@ -210,6 +223,7 @@ func _select_character(character_id: String) -> void:
 
 
 func _show_sheet(c: Dictionary) -> void:
+	_last_sheet = c
 	var lines := PackedStringArray()
 	lines.append("[font_size=20][b]%s[/b][/font_size]" % c["name"])
 	lines.append("%s · %s" % [c["role"] if c["role"] != "" else "no role", c["profession"] if c["profession"] != "" else "no profession"])
@@ -229,6 +243,14 @@ func _show_sheet(c: Dictionary) -> void:
 	var body: Dictionary = c["body"]
 	lines.append("[b]Body[/b]  %s · muscles %d · fatness %d · %s" % [
 		_height(int(body["height_cm"])), body["muscles"], body["fatness"], body["build"]])
+	var measured := PackedStringArray()
+	for part in ["bust", "underbust", "waist", "hips"]:
+		var value: Variant = body.get(part + "_cm")
+		if value != null:
+			measured.append("%s %s" % [part, _length(int(value))])
+	if not measured.is_empty():
+		var size := " · bra %s (US)" % c["bra_size"] if c.get("bra_size") != null else ""
+		lines.append("[b]Measurements[/b]  " + " · ".join(measured) + size)
 	lines.append("[b]Money[/b]  cash %d · bank %d" % [c["cash"], c["bank"]])
 	if not c["abilities"].is_empty():
 		lines.append("[b]Abilities[/b]  " + ", ".join(PackedStringArray(c["abilities"])))
@@ -264,6 +286,22 @@ func _show_sheet(c: Dictionary) -> void:
 
 func _or_none(value: Variant) -> String:
 	return "none" if value == null else str(value)
+
+
+## Как `format_length` в ядре: сантиметры или дюймы; большое — в м, км, футах, милях.
+func _length(cm: int) -> String:
+	if _inches:
+		var inches := cm / 2.54
+		if inches < 120.0:
+			return "%.1f in" % inches
+		if inches < 63360.0:
+			return "%d ft" % roundi(inches / 12.0)
+		return "%.1f mi" % (inches / 63360.0)
+	if cm < 1000:
+		return "%d cm" % cm
+	if cm < 100000:
+		return "%.1f m" % (cm / 100.0)
+	return "%.1f km" % (cm / 100000.0)
 
 
 func _height(cm: int) -> String:

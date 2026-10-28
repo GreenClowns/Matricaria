@@ -20,6 +20,7 @@ from .world.constants import (
     CONTROLLERS,
     DEFAULT_BODY,
     FACT_STATUSES,
+    MEASUREMENTS,
     RELATION_SCALES,
     RULE_MODES,
     SCENARIO_TYPES,
@@ -27,6 +28,7 @@ from .world.constants import (
     STATS,
     TRAVEL_MODES,
 )
+from .world.measures import format_length
 from .world.models import Event
 from .world.templates import create_from_template, read_template, template_names
 
@@ -253,6 +255,13 @@ def cmd_show(args) -> None:
         b = c.body
         out(f"Body: {height(b['height_cm'])}, muscles {b['muscles']}, fatness {b['fatness']}"
             + (f", {b['build']}" if b["build"] else ""))
+        measured = [(name, b[f"{name}_cm"]) for name in ("bust", "underbust", "waist", "hips")
+                    if b[f"{name}_cm"] is not None]
+        if measured:
+            units = "in" if args.inches else "cm"
+            out("Measurements: " + ", ".join(f"{name} {format_length(value, units)}"
+                                             for name, value in measured)
+                + (f". Bra size (US): {c.bra_size}" if c.bra_size else ""))
         out(f"Money: cash {money(world, c.cash)}, bank {money(world, c.bank)}")
         if c.abilities:
             out("Abilities: " + ", ".join(c.abilities))
@@ -472,11 +481,17 @@ def cmd_stat(args) -> None:
 
 def cmd_body(args) -> None:
     changes = {key: getattr(args, key) for key in DEFAULT_BODY if getattr(args, key) is not None}
+    for key in MEASUREMENTS:
+        if changes.get(key) == 0:
+            changes[key] = None  # 0 — убрать обхват
     with open_world(args) as world:
         world.set_body(args.character, **changes)
         b = world.character(args.character).body
         out(f"{args.character}: {height(b['height_cm'])}, muscles {b['muscles']}, "
             f"fatness {b['fatness']}, {b['build'] or 'no build'}")
+        size = world.character(args.character).bra_size
+        if size:
+            out(f"Bra size (US): {size}")
 
 
 def cmd_relation(args) -> None:
@@ -578,6 +593,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = with_world("show", cmd_show, "character sheet, relations and what they know")
     p.add_argument("character")
+    p.add_argument("--inches", action="store_true", help="show measurements in inches")
 
     p = with_world("log", cmd_log, "show the event log")
     p.add_argument("--last", type=int, default=20, help="how many events (0 = all)")
@@ -641,6 +657,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--muscles", type=int, help="0-100")
     p.add_argument("--fatness", type=int, help="0-100")
     p.add_argument("--build", help="e.g. slender, athletic, broad")
+    for name in ("bust", "underbust", "waist", "hips"):
+        p.add_argument(f"--{name}", dest=f"{name}_cm", type=int, help="cm, 0 = remove")
     p = with_world("relation", cmd_relation, "narrator: set how one character feels about another")
     p.add_argument("from_id")
     p.add_argument("to_id")

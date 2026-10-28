@@ -13,7 +13,7 @@ from matricaria.world import CLOCK, RuleError, World, format_date
 from matricaria.world.calendar import date_of
 from matricaria.world.chance import rng
 from matricaria.world.routines import _payday, load_rules
-from matricaria.world.schema import NPC_STATE, SCHEMA
+from matricaria.world.schema import MEASURE_COLUMNS, NPC_STATE, SCHEMA
 from matricaria.world.templates import create_from_template, read_template
 
 DAY = 1440
@@ -243,9 +243,16 @@ def test_long_skip_counts_weeks(tmp_path):
 # --- Старые сохранения -------------------------------------------------------
 
 
+def without_measures(schema: str) -> str:
+    """Схема без обхватов тела — как до версии 3."""
+    return schema.replace(
+        ",\n    -- Обхваты в сантиметрах (идея И1); NULL — не задано.\n    " + MEASURE_COLUMNS, ""
+    )
+
+
 def _old_world(path):
     """Мир, сохранённый версией 0.3 (схема 1)."""
-    sql = (SCHEMA.replace(NPC_STATE, "")
+    sql = (without_measures(SCHEMA).replace(NPC_STATE, "")
            .replace("    home_id     TEXT    REFERENCES location(id),\n", "")
            .replace("    work_id     TEXT    REFERENCES location(id),\n", ""))
     path.parent.mkdir(parents=True, exist_ok=True)
