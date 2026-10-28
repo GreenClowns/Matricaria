@@ -1,6 +1,27 @@
 # 05. Протокол Godot ⇄ Python (черновик)
 
-WebSocket на `ws://127.0.0.1:<порт>`. Каждое сообщение — это JSON с полями `type`, `id` и `data`.
+WebSocket на `ws://127.0.0.1:<порт>` (по умолчанию 8765). Каждое сообщение — это JSON с полями `type`, `id` и `data`.
+Ответ ядра приходит с тем же `id`, что и запрос.
+
+## Сделано в 0.3.5 «Окно мира»
+
+Код: `core/matricaria/server.py` (ядро), `game/core_client.gd` (Godot). Запуск ядра: `matricaria serve <мир> --port 8765`.
+
+| Godot → ядро | data | Ответ |
+|---|---|---|
+| `world.get` | `{}` | `world.state` |
+| `character.get` | `{ "id": "boris" }` | `character.sheet` |
+| `player.move` | `{ "to": "tavern" }` | `world.state` (пока по местам, по клеткам — в 0.7) |
+| `time.skip` | `{ "minutes": 60 }` | `world.state` |
+| `snapshot.take` | `{ "label": "..." }` | `world.state` |
+| `snapshot.restore` | `{ "id": 1 }` | `world.state` |
+| `rules.set_mode` | `{ "mode": "strict" }` | `world.state` |
+
+- `world.state`: мир (имя, сеттинг, время, режим правил), герой, места с прямоугольниками на схеме (`x`, `y`, `w`, `h`, `depth` — раскладку считает ядро), персонажи, предметы на земле, снимки, последние 40 строк журнала.
+- `character.sheet`: характеристики, тело, деньги, предметы, отношения, знания (статус, верит ли, устарело ли).
+- `error`: `{ "code": "bad_message" / "unknown_type" / "rule", "message": "..." }`. Код `rule` — ядро не разрешило действие.
+
+Ниже — полный план протокола; остальное появится в 0.5–0.8.
 
 ## Godot → ядро (намерения игрока)
 

@@ -291,6 +291,29 @@ def cmd_wait(args) -> None:
         out(f"Now: {format_time(world.time)}. (Nothing happens yet: simulation comes in 0.4.)")
 
 
+def cmd_serve(args) -> None:
+    """Запускает сервер для окна Godot. Остановить — Ctrl+C."""
+    import asyncio
+
+    from .server import serve
+
+    world = open_world(args)
+
+    def ready(server) -> None:
+        out(f"Matricaria core: world '{world.info.name}' at ws://127.0.0.1:{args.port}")
+        out("Waiting for the window. Press Ctrl+C to stop.")
+        sys.stdout.flush()
+
+    try:
+        asyncio.run(serve(world, args.port, ready=ready))
+    except KeyboardInterrupt:
+        out("Stopped.")
+    except OSError as error:
+        raise RuleError(f"Cannot listen on port {args.port}: {error.strerror}") from error
+    finally:
+        world.close()
+
+
 # --- Команды рассказчика ------------------------------------------------------
 
 
@@ -482,6 +505,9 @@ def build_parser() -> argparse.ArgumentParser:
     p = with_world("wait", cmd_wait, "move time forward: 90, 45m, 2h, 3d, 1d6h")
     p.add_argument("duration")
     p.add_argument("--reason")
+
+    p = with_world("serve", cmd_serve, "run the core for the game window (Godot)")
+    p.add_argument("--port", type=int, default=8765)
 
     # Рассказчик (основание author).
     p = with_world("revive", cmd_revive, "narrator: bring a dead character back")
