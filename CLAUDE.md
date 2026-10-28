@@ -62,4 +62,4 @@ tools/       установка моделей, сборка
 tests/       тесты ядра
 ```
 
-Макет интерфейса (17 экранов): https://claude.ai/artifact/Ay7QcNSygtKmfbRSihxsFA (виден только автору, пока он им не поделится).
+Макет интерфейса (18 экранов): https://claude.ai/artifact/Ay7QcNSygtKmfbRSihxsFA (виден только автору, пока он им не поделится).
