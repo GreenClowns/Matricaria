@@ -66,7 +66,7 @@ class Look:
     hair_under: str | None = None     # второй цвет волос снизу (как у Киры)
     eyes: str = "#4a7ae0"
     hair_style: str = "short"         # short, messy, bob, long, tails, bald
-    jaw: str = "soft"                 # soft, sharp, square, round
+    jaw: str = "soft"                 # soft, sharp, heart, round, square, long
     eye_shape: str = "round"          # round, sharp, sleepy
     brows: float = 1.0                # толщина бровей
     ears: str = "human"               # human, elf
@@ -96,6 +96,37 @@ class Layer:
     max_tone: int = 4
 
 
+def smooth(pts, closed=True, steps=10):
+    """Точки плавной кривой, проходящей через все опорные точки."""
+    n = len(pts)
+    out = []
+    rng = range(n) if closed else range(n - 1)
+    for i in rng:
+        p0 = pts[(i - 1) % n] if closed or i > 0 else pts[0]
+        p1, p2 = pts[i], pts[(i + 1) % n]
+        p3 = pts[(i + 2) % n] if closed or i + 2 < n else pts[-1]
+        for k in range(steps):
+            t = k / steps
+            t2, t3 = t * t, t * t * t
+            out.append(tuple(0.5 * (2 * p1[j] + (-p0[j] + p2[j]) * t + (2 * p0[j] - 5 * p1[j] + 4 * p2[j] - p3[j]) * t2
+                                    + (-p0[j] + 3 * p1[j] - 3 * p2[j] + p3[j]) * t3) for j in (0, 1)))
+    if not closed:
+        out.append(pts[-1])
+    return out
+
+
+# Формы лица (вид на три четверти вправо): щека, угол челюсти, подбородок, правая сторона.
+JAWS = {
+    "sharp": {"cheek": (37, 64), "jaw": (44, 79), "chin": [(60, 88), (69, 93), (75, 88)], "jaw_r": (83, 75)},
+    "heart": {"cheek": (37, 62), "jaw": (46, 77), "chin": [(63, 87), (69, 90), (73, 86)], "jaw_r": (82, 73)},
+    "soft": {"cheek": (36, 64), "jaw": (41, 78), "chin": [(58, 88), (68, 90), (77, 86)], "jaw_r": (85, 75)},
+    "round": {"cheek": (35, 66), "jaw": (38, 80), "chin": [(54, 90), (67, 92), (80, 87)], "jaw_r": (87, 77)},
+    "square": {"cheek": (36, 66), "jaw": (39, 83), "chin": [(52, 91), (63, 93), (74, 92), (81, 89)],
+               "jaw_r": (86, 82)},
+    "long": {"cheek": (38, 66), "jaw": (44, 86), "chin": [(60, 96), (69, 99), (75, 94)], "jaw_r": (83, 82)},
+}
+
+
 class Canvas:
     """Увеличенная сетка для фигур одной части."""
 
@@ -111,6 +142,10 @@ class Canvas:
 
     def rect(self, x0, y0, x1, y1, fill=255):
         self.d.rectangle([x0 * SS, y0 * SS, x1 * SS, y1 * SS], fill=fill)
+
+    def curve(self, pts, fill=255, closed=True):
+        """Плавный контур через точки (кривая Катмулла — Рома), без углов."""
+        self.poly(smooth(pts, closed), fill)
 
     def lock(self, root, tip, width, bend=0.0, fill=255):
         """Прядь: изогнутый клин от корня к острому кончику."""
@@ -179,9 +214,11 @@ class Portrait:
         # Опорные точки головы: ось лица смещена вправо (поворот на 3/4).
         self.hx, self.hy = 62, 52
         self.mid = 70
-        jaw = {"soft": (0, 0), "sharp": (-3, 3), "square": (4, -1), "round": (3, -2)}[look.jaw]
-        self.jaw_w, self.chin = jaw
-        self.chin_y = 90 + self.chin + (2 if not look.female else 0)
+        self.jaw = JAWS[look.jaw]
+        tip = max(self.jaw["chin"], key=lambda q: q[1])
+        self.mid = tip[0]
+        self.chin_y = tip[1]
+        self.chin = self.chin_y - 90
 
     # --- слои -----------------------------------------------------------
     def put(self, layer: Layer):
@@ -195,13 +232,10 @@ class Portrait:
         self.owner[m] = layer.name
 
     def face_shape(self, c: Canvas):
-        jw, ch = self.jaw_w, self.chin
-        cy = self.chin_y
-        pts = [(37, 46), (36, 60), (39 - jw * 0.3, 72), (47 - jw, 82 + ch * 0.5),
-               (58, cy - 3), (self.mid, cy), (self.mid + 8 + jw * 0.5, cy - 5),
-               (84 + jw * 0.4, 76), (88, 62), (88, 44), (62, 26)]
-        c.poly(pts)
-        c.ellipse(62, 46, 26, 22)
+        j = self.jaw
+        pts = [(62, 24), (44, 30), (37, 44), j["cheek"], j["jaw"], *j["chin"], j["jaw_r"],
+               (88, 62), (89, 46), (82, 31)]
+        c.curve(pts)
 
     def build(self) -> Image.Image:
         lk = self.look
@@ -231,12 +265,18 @@ class Portrait:
         self.face_mask = face
         self.put(Layer("face", self.skin, face, blur=12))
         if lk.beard == "full":
-            c = Canvas()
+            # Борода повторяет челюсть: лицо, раздутое на 3 точки, ниже линии скул.
             cy = self.chin_y
-            c.poly([(39, 66), (43, 78), (51, 88), (self.mid, cy + 8), (self.mid + 10, cy + 2),
-                    (85, 78), (87, 68), (83, 74), (77, 79), (self.mid, 78), (60, 79), (52, 78), (45, 72)])
-            for i in range(7):
-                c.lock((47 + i * 6, 84), (45 + i * 6.5, cy + 6 + (i % 2) * 3), 6, bend=1.5)
+            big = Image.fromarray((face * 255).astype(np.uint8)).filter(ImageFilter.MaxFilter(7))
+            c = Canvas()
+            c.img.paste(big.resize((SIZE * SS, SIZE * SS), Image.NEAREST))
+            for i in range(8):
+                x = 44 + i * (self.jaw["jaw_r"][0] - 46) / 7
+                c.lock((x, cy - 6), (x - 1 + (i % 2) * 2, cy + 5 + (i % 3) * 2), 7, bend=1.2)
+            top = smooth([(30, 60), (40, 70), (50, 77), (self.mid - 4, 78), (self.mid + 6, 78), (80, 73), (92, 62)],
+                         closed=False)
+            c.poly([(0, 0)] + top + [(SIZE, 0)], fill=0)
+            c.ellipse(self.mid + 1, 81 + self.chin * 0.4, 5, 2.2, fill=0)
             beard = c.mask()
             self.put(Layer("beard", self.hair, beard, blur=5, max_tone=3))
             lines = Canvas()
@@ -280,7 +320,8 @@ class Portrait:
         lk = self.look
         c = Canvas()
         sw = 0 if lk.female else 6
-        c.poly([(4 - sw, 128), (14 - sw, 106), (40, 96), (88, 96), (114 + sw, 106), (126 + sw, 128)])
+        c.curve([(-8 - sw, 140), (-2 - sw, 120), (6 - sw, 109), (24 - sw / 2, 102), (46, 97), (64, 96), (82, 97),
+                 (104 + sw / 2, 102), (122 + sw, 109), (130 + sw, 120), (136 + sw, 140)])
         self.body_mask = c.mask()
         self.put(Layer("body", self.cloth, self.body_mask, blur=10))
         self.folds(self.body_mask, self.cloth, [((22, 112), (34, 128)), ((100, 110), (92, 128)), ((30, 106), (44, 120))])
@@ -300,8 +341,8 @@ class Portrait:
         o = lk.outfit
         if o == "cloak":
             c = Canvas()
-            c.poly([(0, 128), (8, 104), (40, 92), (54, 102), (64, 128)])
-            c.poly([(128, 128), (120, 104), (88, 92), (76, 102), (68, 128)])
+            c.curve([(-4, 132), (0, 112), (14, 99), (40, 92), (52, 99), (58, 114), (64, 132)])
+            c.curve([(132, 132), (128, 112), (114, 99), (88, 92), (76, 99), (70, 114), (68, 132)])
             cloak = c.mask()
             self.put(Layer("cloak", self.cloth, cloak, blur=8))
             self.folds(cloak, self.cloth, [((16, 108), (12, 128)), ((30, 102), (34, 128)), ((112, 108), (116, 128)),
@@ -445,7 +486,7 @@ class Portrait:
         self.px(self.mid, 73, self.skin[0])
         self.px(self.mid - 1, 72, self.skin[3])
         # Рот.
-        my = 80 + (self.chin // 2)
+        my = int(round(80 + self.chin * 0.4))
         mx = self.mid - 3
         if emo == "happy":
             for i in range(-4, 6):
@@ -474,6 +515,12 @@ class Portrait:
             for i in range(4):
                 if emo in ("happy", "neutral", "surprised"):
                     self.px(bx + i, 73 + (i % 2), mix(self.skin[2], (230, 110, 120), 0.45), only_face=True)
+        # тень под нижней губой и блик на подбородке
+        self.px(self.mid - 1, self.chin_y - 5, self.skin[1], only_face=True)
+        self.px(self.mid, self.chin_y - 5, self.skin[1], only_face=True)
+        self.px(self.mid - 3, self.chin_y - 3, self.skin[3], only_face=True)
+        if lk.jaw == "square":
+            self.px(self.mid - 6, self.chin_y - 2, self.skin[1], only_face=True)
         if lk.freckles:
             for x, y in ((47, 70), (50, 71), (53, 70), (79, 70), (82, 71), (49, 73), (84, 73)):
                 self.px(x, y, self.skin[1], only_face=True)
@@ -581,7 +628,7 @@ CAST = {
                  hair_style="bob", jaw="sharp", female=True, outfit="cloak", cloth="#a83a32",
                  trim="#e8c050", bg="#6a3a4a"),
     "lina": Look(name="Lina", skin="#f0c8a8", hair="#3a3a4c", eyes="#e09a30", hair_style="short",
-                 jaw="sharp", eye_shape="sharp", brows=1.4, scar=True, female=True, outfit="armor",
+                 jaw="long", eye_shape="sharp", brows=1.4, scar=True, female=True, outfit="armor",
                  cloth="#9aa2b0", bg="#4a5260"),
     "mora": Look(name="Mora", skin="#f4dccc", hair="#b49ae0", eyes="#40b070", hair_style="long",
                  jaw="soft", eye_shape="sleepy", female=True, outfit="robe", cloth="#3e2a52",
@@ -596,7 +643,7 @@ CAST = {
                  jaw="square", brows=1.8, beard="full", age=0.8, outfit="apron", cloth="#5a4a3a",
                  cloth2="#3e2e22", bg="#5a4a40", emotion="angry"),
     "anya": Look(name="Anya", skin="#f8dcc8", hair="#9a9aa8", eyes="#e85060", hair_style="tails",
-                 jaw="soft", female=True, outfit="apron", cloth="#f0eee8", cloth2="#7a5236",
+                 jaw="heart", female=True, outfit="apron", cloth="#f0eee8", cloth2="#7a5236",
                  bg="#5a4a52"),
 }
 
