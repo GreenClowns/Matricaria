@@ -22,7 +22,7 @@ from .constants import (
 )
 from .errors import NotFoundError, RuleError
 from .models import Event, WorldInfo
-from .schema import check_schema, create_schema
+from .schema import SCHEMA_VERSION, check_schema, create_schema, schema_version, upgrade_schema
 
 
 def _connect(path: Path) -> sqlite3.Connection:
@@ -96,17 +96,28 @@ class WorldBase:
 
     @classmethod
     def open(cls, path: str | Path):
-        """Открывает существующий мир."""
+        """Открывает существующий мир. Старое сохранение обновляется до новой схемы."""
         path = Path(path)
         if not path.is_file():
             raise NotFoundError(f"World file {path} not found")
         conn = _connect(path)
         try:
             check_schema(conn)
+            world = cls(conn, path)
+            world._upgrade()
         except Exception:
             conn.close()
             raise
-        return cls(conn, path)
+        return world
+
+    def _upgrade(self) -> None:
+        """Обновляет схему базы, если мир сохранён старой версией, и пишет это в журнал."""
+        if schema_version(self._conn) == SCHEMA_VERSION:
+            return
+        with self._change():
+            old = upgrade_schema(self._conn)
+            self._record("schema_upgraded", basis="rules",
+                         data={"from": old, "to": SCHEMA_VERSION})
 
     def close(self) -> None:
         self._conn.close()

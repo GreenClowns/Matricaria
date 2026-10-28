@@ -13,10 +13,13 @@ import json
 import math
 from collections.abc import Callable
 
-from .cli import describe
-from .world import RuleError, SchemaError, World, format_time
+from .cli import describe, report_lines
+from .world import CLOCK, RuleError, SchemaError, World, format_date, format_time
 
 DEFAULT_PORT = 8765
+
+# Самый долгий шаг часов за одно сообщение `time.tick` (минуты).
+MAX_TICK = 60
 
 # Размеры на карте в клетках: место без вложенных мест и отступы.
 PLACE_W, PLACE_H = 7, 5
@@ -86,8 +89,8 @@ def layout(world: World) -> dict[str, dict]:
 # --- Состояние для окна ------------------------------------------------------
 
 
-def world_state(world: World) -> dict:
-    """Всё, что нужно окну, чтобы нарисовать мир."""
+def world_state(world: World, report: list[str] | None = None) -> dict:
+    """Всё, что нужно окну, чтобы нарисовать мир. `report` — сводка после пропуска."""
     info = world.info
     rects = layout(world)
     players = world.players()
@@ -98,6 +101,7 @@ def world_state(world: World) -> dict:
             "seed": info.seed,
             "time": info.time,
             "time_text": format_time(info.time),
+            "date_text": format_date(info.time),
             "rule_mode": info.rule_mode,
             "scenario_type": info.scenario_type,
         },
@@ -124,6 +128,7 @@ def world_state(world: World) -> dict:
                 "health": c.health,
                 "max_health": c.max_health,
                 "height_cm": c.body["height_cm"],
+                "activity": _activity(world, c.id),
             }
             for c in world.characters()
         ],
@@ -141,12 +146,19 @@ def world_state(world: World) -> dict:
             describe(event)
             for event in world.events(after_id=max(0, world.last_event_id() - LOG_SIZE))
         ],
+        "report": report or [],
     }
+
+
+def _activity(world: World, character_id: str) -> str | None:
+    state = world.npc_state(character_id)
+    return state.activity if state else None
 
 
 def character_sheet(world: World, character_id: str) -> dict:
     """Лист персонажа: всё, что о нём знает ядро, включая его знания."""
     c = world.character(character_id)
+    npc = world.npc_state(c.id)
     return {
         "id": c.id,
         "name": c.name,
@@ -154,6 +166,11 @@ def character_sheet(world: World, character_id: str) -> dict:
         "profession": c.profession,
         "controller": c.controller,
         "location_id": c.location_id,
+        "home_id": c.home_id,
+        "work_id": c.work_id,
+        "activity": npc.activity if npc else None,
+        "needs": npc.needs if npc else None,
+        "wage_owed": npc.owed if npc else 0,
         "alive": c.alive,
         "health": c.health,
         "max_health": c.max_health,
@@ -197,6 +214,7 @@ class Session:
             "character.get": self._character_get,
             "player.move": self._player_move,
             "time.skip": self._time_skip,
+            "time.tick": self._time_tick,
             "snapshot.take": self._snapshot_take,
             "snapshot.restore": self._snapshot_restore,
             "rules.set_mode": self._rules_set_mode,
@@ -239,7 +257,15 @@ class Session:
         return self._state()
 
     def _time_skip(self, data: dict):
-        self.world.advance_time(int(data["minutes"]), reason="skipped in the window")
+        report = self.world.skip_time(int(data["minutes"]), reason="skipped in the window")
+        return "world.state", world_state(self.world, report_lines(self.world, report))
+
+    def _time_tick(self, data: dict):
+        """Ход часов в окне (пауза, ×1, ×4): шаг в несколько минут без записи в журнал."""
+        minutes = int(data["minutes"])
+        if not 1 <= minutes <= MAX_TICK:
+            raise RuleError(f"A clock tick is 1 to {MAX_TICK} minutes")
+        self.world.advance_time(minutes, reason=CLOCK)
         return self._state()
 
     def _snapshot_take(self, data: dict):

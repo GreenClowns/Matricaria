@@ -1,8 +1,10 @@
-## Главное окно (версия 0.3.5 «Окно мира»).
+## Главное окно (версии 0.3.5 «Окно мира» и 0.4 «Симуляция»).
 ##
 ## Сверху — время и кнопки, в центре — схема мира, справа — лист
 ## персонажа и журнал. Каждое нажатие уходит в ядро как намерение,
 ## ядро проверяет его и присылает новое состояние мира.
+## Часы идут кнопками «пауза / ×1 / ×4»: раз в секунду окно просит ядро
+## прожить 1 или 4 игровые минуты. Жители решают сами, окно только рисует.
 ##
 ## Параметры после `--` в командной строке:
 ##   --port=8765          порт ядра
@@ -11,6 +13,8 @@
 extends Control
 
 const RULE_MODES := ["strict", "narrative", "free"]
+const SPEEDS := [0, 1, 4]  # игровых минут за секунду
+const TICK_SECONDS := 1.0
 # Скрипты подключаются по пути, а не через class_name: так окно
 # запускается сразу из терминала, без импорта проекта в редакторе.
 const CoreClient := preload("res://core_client.gd")
@@ -29,6 +33,9 @@ var _sheet := RichTextLabel.new()
 var _log := RichTextLabel.new()
 var _status := Label.new()
 var _tabs := TabContainer.new()
+var _speed := 0
+var _tick_in := TICK_SECONDS
+var _tick_pending := false
 var _screenshot_path := ""
 var _screenshot_frames := -1
 
@@ -76,15 +83,24 @@ func _build_ui() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(spacer)
+	var speed_group := ButtonGroup.new()
+	for speed in SPEEDS:
+		var button := _button("Pause" if speed == 0 else "x%d" % speed, _set_speed.bind(speed))
+		button.toggle_mode = true
+		button.button_group = speed_group
+		button.button_pressed = speed == 0
+		button.tooltip_text = "Stop the clock" if speed == 0 else "%d game minute(s) per second" % speed
+		bar.add_child(button)
 	bar.add_child(_button("+1 hour", func(): core.send("time.skip", {"minutes": 60})))
 	bar.add_child(_button("+1 day", func(): core.send("time.skip", {"minutes": 1440})))
+	bar.add_child(_button("+1 week", func(): core.send("time.skip", {"minutes": 10080})))
 	bar.add_child(_label("Rules:"))
 	for mode in RULE_MODES:
 		_rules.add_item(mode)
 	_rules.item_selected.connect(func(index): core.send("rules.set_mode", {"mode": RULE_MODES[index]}))
 	bar.add_child(_rules)
 	bar.add_child(_button("Snapshot", func(): core.send("snapshot.take", {"label": "from the window"})))
-	_snapshots.custom_minimum_size.x = 220
+	_snapshots.custom_minimum_size.x = 170
 	bar.add_child(_snapshots)
 	bar.add_child(_button("Roll back", _on_rollback))
 
@@ -140,7 +156,13 @@ func _on_connected() -> void:
 	core.send("world.get")
 
 
+func _set_speed(speed: int) -> void:
+	_speed = speed
+	_tick_in = TICK_SECONDS
+
+
 func _on_message(type: String, data: Dictionary) -> void:
+	_tick_pending = false
 	match type:
 		"world.state":
 			_show_state(data)
@@ -156,7 +178,7 @@ func _show_state(data: Dictionary) -> void:
 	state = data
 	var world: Dictionary = data["world"]
 	_title.text = "  %s (%s)" % [world["name"], world["setting"]]
-	_time.text = str(world["time_text"])
+	_time.text = str(world.get("date_text", world["time_text"]))
 	_rules.select(RULE_MODES.find(world["rule_mode"]))
 	_snapshots.clear()
 	for snapshot in data.get("snapshots", []):
@@ -172,7 +194,13 @@ func _show_state(data: Dictionary) -> void:
 		core.send("character.get", {"id": selected_character})
 	if _screenshot_path != "" and _screenshot_frames < 0:
 		_screenshot_frames = 20
-	_say("Click a place to walk there, click a character to see their sheet.")
+	var report: Array = data.get("report", [])
+	if not report.is_empty():
+		_say(" · ".join(PackedStringArray(report.slice(1))))
+	elif _speed == 0:
+		_say("Click a place to walk there, click a character to see their sheet.")
+	else:
+		_say("The clock is running (x%d). Press Pause to stop it." % _speed)
 
 
 func _select_character(character_id: String) -> void:
@@ -187,6 +215,11 @@ func _show_sheet(c: Dictionary) -> void:
 	lines.append("%s · %s" % [c["role"] if c["role"] != "" else "no role", c["profession"] if c["profession"] != "" else "no profession"])
 	var alive := "alive" if c["alive"] else "[color=#ff7b6b]dead[/color]"
 	lines.append("%s · health %d/%d · at %s" % [alive, c["health"], c["max_health"], c["location_id"]])
+	if c.get("activity") != null:
+		lines.append("Doing: [b]%s[/b] · home %s · work %s" % [c["activity"], _or_none(c["home_id"]), _or_none(c["work_id"])])
+		var needs: Dictionary = c["needs"]
+		lines.append("Needs: food %d · rest %d · company %d · safety %d" % [
+			needs["food"], needs["rest"], needs["social"], needs["safety"]])
 	if not c["conditions"].is_empty():
 		lines.append("Conditions: " + ", ".join(PackedStringArray(c["conditions"])))
 	var stats: Dictionary = c["stats"]
@@ -229,6 +262,10 @@ func _show_sheet(c: Dictionary) -> void:
 	_sheet.text = "\n".join(lines)
 
 
+func _or_none(value: Variant) -> String:
+	return "none" if value == null else str(value)
+
+
 func _height(cm: int) -> String:
 	if cm >= 1000:
 		return "%.1f m" % (cm / 100.0)
@@ -246,7 +283,15 @@ func _on_rollback() -> void:
 # --- Проверочный снимок экрана -------------------------------------------------
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	# Часы: раз в секунду попросить ядро прожить несколько минут,
+	# но не раньше, чем пришёл ответ на прошлую просьбу.
+	if _speed > 0 and core.is_open() and not _tick_pending:
+		_tick_in -= delta
+		if _tick_in <= 0.0:
+			_tick_in = TICK_SECONDS
+			_tick_pending = true
+			core.send("time.tick", {"minutes": _speed})
 	if _screenshot_frames > 0:
 		_screenshot_frames -= 1
 		if _screenshot_frames == 0:

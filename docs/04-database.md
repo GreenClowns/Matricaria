@@ -19,7 +19,7 @@
 |---|---|---|
 | `world` | Параметры мира (одна строка) | name, setting (`fantasy` / `modern`), seed, time, rule_mode (`strict` / `narrative` / `free`), scenario_type (`standard` / `cozy`), travel (`map` / `scenes`) |
 | `location` | Места и здания | id, name, kind, parent_id, x, y, discovered_at и discovered_by (если место открыто по ходу игры) |
-| `character` | Герои и NPC | id, name, role, profession, personality (JSON), controller (`player` / `ai`), location_id, sprite, portrait, **cash** (наличные), **bank** (на счёте) |
+| `character` | Герои и NPC | id, name, role, profession, personality (JSON), controller (`player` / `ai`), location_id, home_id и work_id (дом и работа, с 0.4), sprite, portrait, **cash** (наличные), **bank** (на счёте) |
 | `stats` | Характеристики, состояние и тело | character_id, strength, agility, endurance, intellect, charisma (1–10), max_health, health, alive, conditions (JSON-список), height_cm (1…50 000), muscles, fatness (0–100), build |
 | `relation` | Отношения from → to | liking, trust, fear, respect (−100…100), love (0…100), knows_name |
 | `ability` | Способности | character_id, kind (`divine_will`, `immortality`, `omniscience`, `magic:<школа>`…), params (JSON) |
@@ -28,12 +28,15 @@
 | `knowledge` | Кто какой факт знает | character_id, fact_id, believes, source, learned_at |
 | `event` | Журнал событий (**только дополняется**) | id, time, kind, actor_id, participants (JSON), data (JSON), dice (JSON), basis (`rules` / `ability` / `author`) |
 | `snapshot` | Снимки для отката | id, time, last_event_id, label, file |
+| `npc_state` | Состояние жителя для симуляции (0.4) | character_id, activity (`sleep` / `work` / `eat` / `socialize` / `rest`), level (подробность), next_at (когда решит снова), updated_at, потребности food, rest, social, safety (0–100), company, owed (невыплаченная зарплата), shift_day |
+
+Версия схемы — 2 (с 0.4). Мир из 0.3 (схема 1) обновляется сам при открытии и при откате к старому снимку: жителям ставятся дом и работа там, где они стоят, в журнал пишется событие `schema_upgraded`.
 
 Появятся в своих версиях:
 
 | Таблица | Что хранит | Версия |
 |---|---|---|
-| `need`, `goal`, `schedule` | Потребности, цели, распорядок NPC | 0.4 |
+| `goal` | Цели NPC (распорядок — в файлах `routines/*.toml`, потребности — в `npc_state`) | 0.4, часть 2 |
 | `message`, `pending` | Сообщения диалогов, очередь «На утверждение» | 0.5 |
 | `summary`, `lore_entry` | Сводки, лорбук | 0.6 |
 | `market`, `faction`, `asset` | Цены в регионе, фракции, картинки | когда понадобятся |
@@ -89,7 +92,7 @@
 
 ## Время
 
-Время идёт только вперёд: команда рассказчика `wait` (событие `time_advanced`). Назад — только откатом к снимку. Симуляции за пропущенное время пока нет (0.4).
+Время идёт только вперёд: команда `wait` или кнопки окна (событие `time_advanced`), ход часов в окне (без события, D53). Назад — только откатом к снимку. За пропущенное время мир живёт: см. [08](08-simulation.md).
 
 ## Снимки и откат
 
@@ -105,4 +108,4 @@
 
 ## Стартовые миры
 
-Файлы TOML в `core/matricaria/world/templates/`: `village` (фэнтези) и `city` (современность). В шаблоне — места, персонажи (характеристики, тело, способности, деньги), предметы, отношения и факты с теми, кто их знает (`known_by`, `believed_by`, `disbelieved_by`). Мир собирается обычными методами ядра с основанием `author`, поэтому всё проверено и записано в журнал.
+Файлы TOML в `core/matricaria/world/templates/`: `village` (фэнтези) и `city` (современность). В шаблоне — места, персонажи (характеристики, тело, способности, деньги, дом `home` и работа `work`), предметы, отношения и факты с теми, кто их знает (`known_by`, `believed_by`, `disbelieved_by`). Мир собирается обычными методами ядра с основанием `author`, поэтому всё проверено и записано в журнал.

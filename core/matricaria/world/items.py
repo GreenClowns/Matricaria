@@ -355,6 +355,65 @@ class ItemsMixin(WorldBase):
                 data={"amount": amount, "account": account, "reason": reason},
             )
 
+    def earn_money(
+        self,
+        character_id: str,
+        amount: int,
+        *,
+        account: str = "cash",
+        source: str,
+        note: str = "",
+        basis: str = "rules",
+    ) -> None:
+        """Заработок по правилам: зарплата или выручка от покупателей (0.4).
+
+        Деньги приходят «со стороны» (казна деревни, город, прохожие),
+        поэтому платит не персонаж мира. Заработать может только живой.
+        """
+        self._check_amount(amount)
+        _require_choice("account", account, ACCOUNTS)
+        if source not in ("wage", "takings"):
+            raise RuleError(f"Unknown income '{source}'; expected wage or takings")
+        with self._change():
+            self._check_basis(basis, character_id, action="Earning money")
+            self._add_money(character_id, account, amount)
+            self._record(
+                "money_earned",
+                basis=basis,
+                actor_id=character_id,
+                participants=[character_id],
+                data={"amount": amount, "account": account, "source": source, "note": note},
+            )
+
+    def spend_money(
+        self,
+        character_id: str,
+        amount: int,
+        *,
+        account: str = "cash",
+        note: str = "",
+        basis: str = "rules",
+    ) -> None:
+        """Траты «на сторону» по правилам: еда и мелочи в итогах симуляции (0.4).
+
+        Деньги уходят из мира, а не к персонажу. Больше, чем есть, не потратить.
+        """
+        self._check_amount(amount)
+        _require_choice("account", account, ACCOUNTS)
+        with self._change():
+            self._check_basis(basis, character_id, action="Spending money")
+            row = self._character_row(character_id)
+            if row[account] < amount:
+                raise RuleError(f"{row['name']} has only {row[account]} ({account}), {amount} needed")
+            self._add_money(character_id, account, -amount)
+            self._record(
+                "money_spent",
+                basis=basis,
+                actor_id=character_id,
+                participants=[character_id],
+                data={"amount": amount, "account": account, "note": note},
+            )
+
     def remove_item(
         self,
         item_id: int,

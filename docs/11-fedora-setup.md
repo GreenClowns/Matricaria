@@ -58,7 +58,15 @@ uv run --project core matricaria kill demo hero
 uv run --project core matricaria rollback demo 1
 ```
 
-Команды рассказчика (пишутся в журнал с основанием `author`): `revive`, `kill`, `health`, `give`, `take`, `money`, `move`, `stat`, `body`, `relation`, `ability`, `controller`, `fact`, `teach`, `rules`, `wait`. Подсказка по любой команде: `matricaria <команда> --help`.
+Пропустить время — мир живёт сам (версия 0.4):
+
+```bash
+uv run --project core matricaria wait demo morning   # до 07:00
+uv run --project core matricaria wait demo 1mo       # месяц; также 90m, 2h, 3d, 2w, 1y
+uv run --project core matricaria log demo --last 50  # что произошло
+```
+
+Команды рассказчика (пишутся в журнал с основанием `author`): `revive`, `kill`, `health`, `give`, `take`, `money`, `move`, `stat`, `body`, `relation`, `ability`, `controller`, `places`, `fact`, `teach`, `rules`. Подсказка по любой команде: `matricaria <команда> --help`.
 
 Чтобы не писать каждый раз длинное начало, можно завести короткое имя (действует до закрытия терминала):
 

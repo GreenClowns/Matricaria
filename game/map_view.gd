@@ -21,6 +21,7 @@ const KIND_COLORS := {
 	"cafe": Color("#e7b98f"),
 	"police station": Color("#a9bfdc"),
 	"clinic": Color("#e6eef2"),
+	"apartments": Color("#d8cfe6"),
 }
 
 var state: Dictionary = {}
@@ -167,7 +168,7 @@ func _draw_figure(c: Dictionary, center: Vector2, is_player: bool, font: Font) -
 	var label := str(c["name"])
 	draw_string(font, center + Vector2(-30, FIGURE * 0.15 + FIGURE * 0.45 * k + 13), label,
 		HORIZONTAL_ALIGNMENT_CENTER, 60, 12, Color("#1d1a17"))
-	_figures.append({"id": c["id"], "name": label, "rect": Rect2(center - Vector2(FIGURE, FIGURE) * 0.6, Vector2(FIGURE, FIGURE * 1.6) * 1.2)})
+	_figures.append({"id": c["id"], "name": label, "activity": c.get("activity"), "rect": Rect2(center - Vector2(FIGURE, FIGURE) * 0.6, Vector2(FIGURE, FIGURE * 1.6) * 1.2)})
 
 
 func _draw_item(item: Dictionary, center: Vector2) -> void:
@@ -213,6 +214,8 @@ func _gui_input(event: InputEvent) -> void:
 func _get_tooltip(at_position: Vector2) -> String:
 	var figure := _figure_at(at_position)
 	if not figure.is_empty():
+		if figure["activity"] != null:
+			return "%s (%s) — click to see the character sheet" % [figure["name"], figure["activity"]]
 		return "%s — click to see the character sheet" % figure["name"]
 	for item in _items:
 		if item["rect"].has_point(at_position):

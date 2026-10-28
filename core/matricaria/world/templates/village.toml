@@ -1,5 +1,6 @@
 # Стартовый мир «Ольховка» (фэнтези) для версии 0.3.
 # Тексты — по-английски (D40). Деньги — в медяках.
+# home и work — дом и работа жителя: по ним живёт распорядок (0.4).
 
 [world]
 name = "Alder Village"
@@ -29,6 +30,12 @@ kind = "house"
 parent = "alder"
 
 [[locations]]
+id = "guardhouse"
+name = "Guardhouse"
+kind = "house"
+parent = "alder"
+
+[[locations]]
 id = "forest"
 name = "Old Forest Edge"
 kind = "forest"
@@ -50,6 +57,8 @@ name = "Boris"
 role = "innkeeper"
 profession = "innkeeper"
 location = "tavern"
+home = "marta_house"
+work = "tavern"
 cash = 120
 bank = 300
 stats = { strength = 7, charisma = 6 }
@@ -62,6 +71,8 @@ name = "Marta"
 role = "herbalist"
 profession = "healer"
 location = "marta_house"
+home = "marta_house"
+work = "marta_house"
 cash = 45
 stats = { intellect = 8, charisma = 6 }
 abilities = [{ kind = "magic:healing", params = { power = 2 } }]
@@ -73,6 +84,8 @@ name = "Yan"
 role = "guard"
 profession = "guard"
 location = "square"
+home = "guardhouse"
+work = "square"
 cash = 20
 stats = { strength = 7, endurance = 8 }
 body = { height_cm = 190, muscles = 70, fatness = 20, build = "athletic" }
@@ -84,6 +97,7 @@ name = "Pip"
 role = "forest pixie"
 profession = "trickster"
 location = "forest"
+home = "forest"
 stats = { strength = 1, agility = 9, intellect = 7, charisma = 8 }
 body = { height_cm = 15, muscles = 10, fatness = 20, build = "slender" }
 abilities = [{ kind = "magic:illusion" }]

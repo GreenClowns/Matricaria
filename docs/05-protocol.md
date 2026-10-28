@@ -12,13 +12,15 @@ WebSocket на `ws://127.0.0.1:<порт>` (по умолчанию 8765). Ка�
 | `world.get` | `{}` | `world.state` |
 | `character.get` | `{ "id": "boris" }` | `character.sheet` |
 | `player.move` | `{ "to": "tavern" }` | `world.state` (пока по местам, по клеткам — в 0.7) |
-| `time.skip` | `{ "minutes": 60 }` | `world.state` |
+| `time.skip` | `{ "minutes": 60 }` | `world.state` со сводкой `report` (0.4) |
+| `time.tick` | `{ "minutes": 1 }` (1–60) | `world.state`; ход часов «×1 / ×4», без события в журнале (0.4, D53) |
 | `snapshot.take` | `{ "label": "..." }` | `world.state` |
 | `snapshot.restore` | `{ "id": 1 }` | `world.state` |
 | `rules.set_mode` | `{ "mode": "strict" }` | `world.state` |
 
 - `world.state`: мир (имя, сеттинг, время, режим правил), герой, места с прямоугольниками на схеме (`x`, `y`, `w`, `h`, `depth` — раскладку считает ядро), персонажи, предметы на земле, снимки, последние 40 строк журнала.
-- `character.sheet`: характеристики, тело, деньги, предметы, отношения, знания (статус, верит ли, устарело ли).
+- С 0.4 в `world.state` есть `world.date_text` (полная дата по календарю D50), у персонажей — `activity` (чем занят житель), а после `time.skip` — `report`: строки сводки пропуска.
+- `character.sheet`: характеристики, тело, деньги, предметы, отношения, знания (статус, верит ли, устарело ли); с 0.4 — `home_id`, `work_id`, `activity`, `needs` (food, rest, social, safety), `wage_owed`.
 - `error`: `{ "code": "bad_message" / "unknown_type" / "rule", "message": "..." }`. Код `rule` — ядро не разрешило действие.
 
 Ниже — полный план протокола; остальное появится в 0.5–0.8.

@@ -73,6 +73,8 @@ class SnapshotsMixin(WorldBase):
             source.backup(self._conn)
         finally:
             source.close()
+        # Снимок могла сделать старая версия программы.
+        self._upgrade()
         with self._change():
             self._conn.execute("DELETE FROM snapshot")
             self._conn.executemany(

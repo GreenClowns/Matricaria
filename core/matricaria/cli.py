@@ -14,7 +14,8 @@ import re
 import sys
 from pathlib import Path
 
-from .world import RuleError, SchemaError, World, format_time
+from .world import RuleError, SchemaError, TimeReport, World, format_date, format_time
+from .world.calendar import DAYS_PER_MONTH, DAYS_PER_YEAR
 from .world.constants import (
     CONTROLLERS,
     DEFAULT_BODY,
@@ -69,6 +70,22 @@ def describe(event: Event) -> str:
     kind = event.kind.replace("_", " ")
     if event.kind == "character_moved":
         text = f"{event.participants[0]} moved {data['from']} -> {data['to']}"
+    elif event.kind == "money_paid":
+        text = f"{event.participants[0]} paid {event.participants[1]} {data['amount']}" \
+               f" ({data['account']})" + (f": {data['reason']}" if data.get("reason") else "")
+    elif event.kind == "money_earned":
+        text = f"{event.participants[0]} earned {data['amount']} ({data['account']})" \
+               + (f": {data['note']}" if data.get("note") else "")
+    elif event.kind == "money_spent":
+        text = f"{event.participants[0]} spent {data['amount']} ({data['account']})" \
+               + (f": {data['note']}" if data.get("note") else "")
+    elif event.kind == "could_not_afford":
+        text = f"{event.participants[0]} could not afford a {data['what']} " \
+               f"at {data['place']} ({data['price']})"
+    elif event.kind == "time_advanced":
+        text = f"time passed: {duration_text(data['minutes'])}" \
+               + (f", {data['events']} events" if data.get("events") else "") \
+               + (f" ({data['reason']})" if data.get("reason") else "")
     elif event.kind == "health_changed":
         text = f"{event.participants[0]} health {data['from']} -> {data['to']}"
         if data.get("cause"):
@@ -93,6 +110,48 @@ def describe(event: Event) -> str:
 
 def out(text: str = "") -> None:
     print(text)
+
+
+def duration_text(minutes: int) -> str:
+    """Минуты → «3 days 4 hours»."""
+    days, rest = divmod(minutes, 1440)
+    hours, minutes = divmod(rest, 60)
+    parts = [(days, "day"), (hours, "hour"), (minutes, "minute")]
+    text = " ".join(f"{n} {unit}{'s' if n != 1 else ''}" for n, unit in parts if n)
+    return text or "0 minutes"
+
+
+# Как назвать события в сводке после пропуска времени.
+REPORT_NAMES = {
+    "character_moved": "moves",
+    "money_paid": "payments",
+    "money_earned": "earnings",
+    "money_spent": "spendings",
+    "could_not_afford": "could not afford",
+}
+
+
+def report_lines(world: World, report: TimeReport) -> list[str]:
+    """Короткая сводка пропуска: сколько и чего случилось, у кого изменились деньги."""
+    lines = [f"Now: {format_time(report.end)} — {format_date(report.end)}."]
+    lines.append(f"{duration_text(report.end - report.start)} passed. "
+                 f"{sum(report.counts.values())} things happened.")
+    if report.counts:
+        lines.append("  " + ", ".join(
+            f"{count} {REPORT_NAMES.get(kind, kind.replace('_', ' '))}"
+            for kind, count in sorted(report.counts.items(), key=lambda pair: -pair[1])
+        ))
+    if report.money:
+        names = {c.id: c.name for c in world.characters()}
+        lines.append("Money: " + ", ".join(
+            f"{names.get(cid, cid)} {delta:+d}" for cid, delta in report.money.items()
+        ))
+    return lines
+
+
+def activity_of(world: World, character_id: str) -> str | None:
+    state = world.npc_state(character_id)
+    return state.activity if state else None
 
 
 # --- Команды: мир -----------------------------------------------------------
@@ -143,6 +202,7 @@ def cmd_status(args) -> None:
     with open_world(args) as world:
         info = world.info
         out(f"{info.name} — {info.setting}, {format_time(info.time)}")
+        out(format_date(info.time))
         out(f"Rule mode: {info.rule_mode}. Scenario: {info.scenario_type}. "
             f"Travel: {info.travel}. Seed: {info.seed}.")
         for player in world.players():
@@ -153,7 +213,8 @@ def cmd_status(args) -> None:
         out("Places:")
         for location in world.locations():
             people = [
-                c.name + ("" if c.alive else " (dead)")
+                c.name + (f" ({activity_of(world, c.id)})" if c.alive and activity_of(world, c.id)
+                          else "" if c.alive else " (dead)")
                 for c in world.characters(location_id=location.id)
             ]
             things = [i.name for i in world.items(location_id=location.id)]
@@ -181,6 +242,13 @@ def cmd_show(args) -> None:
         out(f"Controlled by: {c.controller}. Location: {c.location_id or 'nowhere'}. {state}.")
         out(f"Health: {c.health}/{c.max_health}"
             + (f". Conditions: {', '.join(c.conditions)}" if c.conditions else ""))
+        if c.home_id or c.work_id:
+            out(f"Home: {c.home_id or 'none'}. Work: {c.work_id or 'none'}.")
+        npc = world.npc_state(c.id)
+        if npc:
+            out(f"Doing: {npc.activity}. Needs: "
+                + ", ".join(f"{name} {value}" for name, value in npc.needs.items())
+                + (f". Wage owed: {money(world, npc.owed)}" if npc.owed else ""))
         out("Stats: " + ", ".join(f"{name} {value}" for name, value in c.stats.items()))
         b = c.body
         out(f"Body: {height(b['height_cm'])}, muscles {b['muscles']}, fatness {b['fatness']}"
@@ -274,21 +342,39 @@ def cmd_rules(args) -> None:
         out(f"Rule mode: {args.mode}.")
 
 
-def parse_duration(text: str) -> int:
-    """`90`, `90m`, `2h`, `3d`, `1d6h` → минуты."""
+MORNING = 7 * 60  # «до утра» — до 07:00
+
+
+def parse_duration(text: str, now: int = 0) -> int:
+    """`90`, `90m`, `2h`, `3d`, `1d6h`, `2w`, `1mo`, `1y`, `morning` → минуты.
+
+    Месяц — 30 дней, год — 360 (D50). `morning` — до ближайших 07:00.
+    """
     if text.isdigit():
         return int(text)
-    parts = re.fullmatch(r"(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?", text)
+    if text == "morning":
+        minute = now % 1440
+        return MORNING - minute if minute < MORNING else 1440 - minute + MORNING
+    parts = re.fullmatch(
+        r"(?:(\d+)y)?(?:(\d+)mo)?(?:(\d+)w)?(?:(\d+)d)?(?:(\d+)h)?(?:(\d+)m)?", text
+    )
     if not parts or not any(parts.groups()):
-        raise RuleError(f"Cannot read duration '{text}'; examples: 90, 45m, 2h, 3d, 1d6h")
-    days, hours, minutes = (int(value or 0) for value in parts.groups())
+        raise RuleError(
+            f"Cannot read duration '{text}'; examples: 90, 45m, 2h, 3d, 1d6h, 2w, 1mo, 1y, morning"
+        )
+    years, months, weeks, days, hours, minutes = (int(value or 0) for value in parts.groups())
+    days += years * DAYS_PER_YEAR + months * DAYS_PER_MONTH + weeks * 7
     return days * 1440 + hours * 60 + minutes
 
 
 def cmd_wait(args) -> None:
     with open_world(args) as world:
-        world.advance_time(parse_duration(args.duration), reason=args.reason or "")
-        out(f"Now: {format_time(world.time)}. (Nothing happens yet: simulation comes in 0.4.)")
+        report = world.skip_time(parse_duration(args.duration, world.time),
+                                 reason=args.reason or "")
+        for line in report_lines(world, report):
+            out(line)
+        if report.counts:
+            out(f"What happened: matricaria log {args.world} --last 50")
 
 
 def cmd_serve(args) -> None:
@@ -414,6 +500,13 @@ def cmd_ability(args) -> None:
             out(f"{args.character} gained {args.kind}.")
 
 
+def cmd_places(args) -> None:
+    with open_world(args) as world:
+        world.set_places(args.character, home_id=args.home, work_id=args.work)
+        c = world.character(args.character)
+        out(f"{c.name}: home {c.home_id or 'none'}, work {c.work_id or 'none'}.")
+
+
 def cmd_controller(args) -> None:
     with open_world(args) as world:
         world.set_controller(args.character, args.controller)
@@ -502,7 +595,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = with_world("rules", cmd_rules, "change the rule mode")
     p.add_argument("mode", choices=RULE_MODES)
-    p = with_world("wait", cmd_wait, "move time forward: 90, 45m, 2h, 3d, 1d6h")
+    p = with_world("wait", cmd_wait,
+                   "let the world live: 90, 45m, 2h, 3d, 1d6h, 2w, 1mo, 1y or morning")
     p.add_argument("duration")
     p.add_argument("--reason")
 
@@ -558,6 +652,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("character")
     p.add_argument("kind", help="e.g. divine_will, immortality, omniscience, magic:fire")
     p.add_argument("--remove", action="store_true")
+    p = with_world("places", cmd_places, "narrator: set where a character lives and works")
+    p.add_argument("character")
+    p.add_argument("--home", help="place id ('' = no home)")
+    p.add_argument("--work", help="place id ('' = no work)")
     p = with_world("controller", cmd_controller, "narrator: hand a character to the player or AI")
     p.add_argument("character")
     p.add_argument("controller", choices=CONTROLLERS)

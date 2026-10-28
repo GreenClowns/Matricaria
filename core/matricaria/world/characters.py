@@ -62,6 +62,8 @@ class CharactersMixin(WorldBase):
         profession: str = "",
         controller: str = "ai",
         location_id: str | None = None,
+        home_id: str | None = None,
+        work_id: str | None = None,
         stats: dict[str, int] | None = None,
         max_health: int | None = None,
         body: dict | None = None,
@@ -77,6 +79,8 @@ class CharactersMixin(WorldBase):
 
         Характеристики, которых нет в `stats`, равны 5. В `body` можно задать
         рост (`height_cm`), мускулы, полноту и телосложение (D38).
+        Дом (`home_id`) и работа (`work_id`) нужны распорядку жителя (0.4);
+        если дом не указан, житель живёт там, где появился.
         """
         if not character_id or not name.strip():
             raise RuleError("Character id and name cannot be empty")
@@ -100,11 +104,15 @@ class CharactersMixin(WorldBase):
                 "SELECT 1 FROM character WHERE id = ?", (character_id,)
             ).fetchone():
                 raise RuleError(f"Character '{character_id}' already exists")
-            if location_id is not None:
-                self._location_row(location_id)
+            if home_id is None and controller == "ai":
+                home_id = location_id
+            for place in (location_id, home_id, work_id):
+                if place is not None:
+                    self._location_row(place)
             self._conn.execute(
                 "INSERT INTO character (id, name, role, profession, personality, controller,"
-                " location_id, sprite, portrait, cash, bank) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " location_id, home_id, work_id, sprite, portrait, cash, bank)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     character_id,
                     name,
@@ -113,6 +121,8 @@ class CharactersMixin(WorldBase):
                     json.dumps(personality or {}, ensure_ascii=False),
                     controller,
                     location_id,
+                    home_id,
+                    work_id,
                     sprite,
                     portrait,
                     cash,
@@ -142,6 +152,8 @@ class CharactersMixin(WorldBase):
                     "profession": profession,
                     "controller": controller,
                     "location_id": location_id,
+                    "home_id": home_id,
+                    "work_id": work_id,
                     "stats": values,
                     "max_health": max_health,
                     "body": body_values,
@@ -196,6 +208,36 @@ class CharactersMixin(WorldBase):
                 participants=[character_id],
                 data={"from": row["profession"], "to": profession},
             )
+
+    def set_places(
+        self,
+        character_id: str,
+        *,
+        home_id: str | None = None,
+        work_id: str | None = None,
+        basis: str = "author",
+    ) -> None:
+        """Новый дом или работа жителя. Пустая строка — без дома или без работы.
+
+        По правилам жители сами пока не переезжают: это придёт с целями NPC.
+        """
+        changes = {key: value for key, value in (("home_id", home_id), ("work_id", work_id))
+                   if value is not None}
+        if not changes:
+            raise RuleError("Nothing to change")
+        with self._change():
+            row = self._character_row(character_id)
+            self._check_basis(basis, None, action="Moving house", rules_allow=False)
+            data = {}
+            for column, place in changes.items():
+                place = place or None
+                if place is not None:
+                    self._location_row(place)
+                self._conn.execute(
+                    f"UPDATE character SET {column} = ? WHERE id = ?", (place, character_id)
+                )
+                data[column] = {"from": row[column], "to": place}
+            self._record("places_changed", basis=basis, participants=[character_id], data=data)
 
     # --- Характеристики ------------------------------------------------
 

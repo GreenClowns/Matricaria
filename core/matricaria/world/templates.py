@@ -108,6 +108,8 @@ def _add_character(world: World, entry: dict) -> None:
         profession=entry.get("profession", ""),
         controller=entry.get("controller", "ai"),
         location_id=entry.get("location"),
+        home_id=entry.get("home"),
+        work_id=entry.get("work"),
         stats=entry.get("stats"),
         body=entry.get("body"),
         personality=entry.get("personality"),
