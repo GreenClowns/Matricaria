@@ -1,0 +1,5 @@
+[
+  {"hue": [70, 170], "min_sat": 0.15, "to_hue": 275, "sat_mul": 0.9, "light_mul": 0.85},
+  {"hue": [340, 12], "min_sat": 0.35, "to_hue": 168, "sat_mul": 0.75, "light_mul": 1.02},
+  {"hue": [12, 40], "min_sat": 0.4, "light": [0.28, 0.62], "to_hue": 268, "sat_mul": 0.55, "light_mul": 1.35}
+]

@@ -79,3 +79,28 @@ Pixel art building kit for a top-down 3/4 view RPG village, same style as the at
 ```
 Pixel art seamless tiles for a top-down RPG, same style as the attached reference: grass, dirt road, cobblestone, water, sand, wooden tavern floor. Each tile a separate square on one sheet with space between them. Solid flat magenta #FF00FF background, no text.
 ```
+
+## Обработка картинок (для сессии Claude)
+
+Скрипт `tools/art/process_art.py` (тесты — `tests/test_art_tools.py`). Нужны Pillow и numpy:
+
+```bash
+# размер «пикселя» нейросети
+uv run --with pillow --with numpy python tools/art/process_art.py estimate картинка.png
+# портрет или фигура: сетка, палитра, прозрачный фон
+uv run --with pillow --with numpy python tools/art/process_art.py portrait вход.png выход.png --width 160 --colors 40
+# лист кадров: нарезка на кадры и атлас (фон-шахматка по умолчанию, или --bg magenta)
+uv run --with pillow --with numpy python tools/art/process_art.py sheet лист.png папка_кадров --block 6 --colors 28
+# перекраска палитрой по правилам
+uv run --with pillow --with numpy python tools/art/process_art.py recolor atlas.png mora.png tools/art/rules/mora.json
+```
+
+Проверенные настройки: портреты ChatGPT 1254×1254 → `--width 160 --colors 40`; эмоции (кадр ~400 px шириной) → `--width 80 --colors 32`; лист кадров Ивы 1024×1536 → `--block 6 --colors 28` (14 кадров ~33–61×35–64); эльфийка 576×1024 → `--width 72 --colors 30`; фигура в полный рост с настоящей прозрачностью → `--width 216`.
+
+## Состояние на 28.10.2026 (передача в новый чат)
+
+- **Эталон (D48)** загружен в макет (экраны 15 «Эталон стиля» и 16 «Эталон спрайтов»): портреты Ивы, бабушки Нины, Бориса, 5 эмоций Ивы, Артём в полный рост, лист кадров Ивы (атлас), эльфийка, Мора — перекраска атласа Ивы (`tools/art/rules/mora.json`).
+- **Карта (D49)**: деревня перерисована крупно под спрайты (экран 1). Генератор карты — во временной папке старой сессии, в проект не перенесён; на следующем шаге её заменят тайлы и модули от нейросети (шаг 4).
+- **Исходные картинки автора в репозиторий не добавлены**: сначала проверить условия ChatGPT и Nano Banana и записать их в CREDITS.md. Для работы в новом чате автор присылает картинки заново.
+- **Ждут ответа автора**: D50 — обычные NPC и здания собираются из деталей (основы тела: 4 телосложения × 3 размера груди у женщин, 4 у мужчин; одежда под 4 телосложения; перекраска шейдером; рост — масштаб спрайта; рецепт хранит ядро), важных персонажей и портреты рисует нейросеть. D51 — картинки эталона из ChatGPT в CREDITS после проверки условий.
+- **Следующий шаг**: пробная партия из Nano Banana (шаг 1 выше) → обработка скриптом → показ в макете.
