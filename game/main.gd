@@ -11,6 +11,10 @@
 extends Control
 
 const RULE_MODES := ["strict", "narrative", "free"]
+# Скрипты подключаются по пути, а не через class_name: так окно
+# запускается сразу из терминала, без импорта проекта в редакторе.
+const CoreClient := preload("res://core_client.gd")
+const MapView := preload("res://map_view.gd")
 
 var core := CoreClient.new()
 var map_view := MapView.new()
