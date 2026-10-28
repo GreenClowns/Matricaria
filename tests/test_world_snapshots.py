@@ -102,6 +102,7 @@ def test_advance_time(world):
 def test_body_defaults_and_template(world):
     assert world.character("hero").body == {
         "height_cm": 170, "muscles": 30, "fatness": 30, "build": "average",
+        "bust_cm": None, "underbust_cm": None, "waist_cm": None, "hips_cm": None,
     }
     assert world.character("pip").body["height_cm"] == 15
 

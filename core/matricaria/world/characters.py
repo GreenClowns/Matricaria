@@ -11,6 +11,9 @@ from .constants import (
     HEIGHT_MAX_CM,
     HEIGHT_MIN_CM,
     IMMORTALITY,
+    MEASURE_MAX_CM,
+    MEASURE_MIN_CM,
+    MEASUREMENTS,
     STAT_MAX,
     STAT_MIN,
     STATS,
@@ -291,6 +294,16 @@ class CharactersMixin(WorldBase):
             if not isinstance(body[scale], int) or not 0 <= body[scale] <= 100:
                 raise RuleError(f"{scale} must be from 0 to 100, got {body[scale]}")
         body["build"] = str(body["build"]).strip()
+        for name in MEASUREMENTS:
+            value = body[name]
+            if value is not None and (
+                not isinstance(value, int) or isinstance(value, bool)
+                or not MEASURE_MIN_CM <= value <= MEASURE_MAX_CM
+            ):
+                raise RuleError(f"{name} must be from {MEASURE_MIN_CM} cm to 10 km, got {value}")
+        bust, under = body["bust_cm"], body["underbust_cm"]
+        if bust is not None and under is not None and under > bust:
+            raise RuleError("Underbust cannot be bigger than bust")
         return body
 
     def set_body(
@@ -301,7 +314,9 @@ class CharactersMixin(WorldBase):
         actor_id: str | None = None,
         **changes,
     ) -> None:
-        """Меняет рост, мускулы, полноту или телосложение.
+        """Меняет рост, мускулы, полноту, телосложение или обхваты.
+
+        Обхват `None` — убрать (не задан).
 
         По правилам тело само не меняется: зелье роста и тренировки
         появятся вместе с правилами тела в 0.5.

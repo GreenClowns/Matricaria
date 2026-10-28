@@ -45,7 +45,16 @@ RELATION_SCALES = {
 HEIGHT_MIN_CM = 1
 HEIGHT_MAX_CM = 50_000
 BODY_SCALES = ("muscles", "fatness")
-DEFAULT_BODY = {"height_cm": 170, "muscles": 30, "fatness": 30, "build": "average"}
+# Обхваты тела в сантиметрах (идея И1, D58): грудь, под грудью, талия, бёдра.
+# Не у всех они есть: None — не задано (у феи, у дракона…). Предел — 10 км:
+# способности и чудеса позволяют и грудь «размером с город».
+MEASUREMENTS = ("bust_cm", "underbust_cm", "waist_cm", "hips_cm")
+MEASURE_MIN_CM = 1
+MEASURE_MAX_CM = 1_000_000
+DEFAULT_BODY = {
+    "height_cm": 170, "muscles": 30, "fatness": 30, "build": "average",
+    **{name: None for name in MEASUREMENTS},
+}
 
 # Отметка у предмета: в руках или надето (docs/02-game-design.md).
 EQUIP_STATES = ("held", "worn")

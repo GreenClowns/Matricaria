@@ -1,6 +1,7 @@
 # Стартовый мир «Кленовая улица» (современность) для версии 0.3.
 # Тексты — по-английски (D40). Деньги — в центах.
 # home и work — дом и работа жителя: по ним живёт распорядок (0.4).
+# Обхваты в body (bust_cm, underbust_cm, waist_cm, hips_cm) — в сантиметрах (идея И1).
 
 [world]
 name = "Maple Street"
@@ -63,6 +64,8 @@ work = "cafe"
 cash = 15000
 bank = 900000
 stats = { charisma = 8 }
+# Большой размер: 28DDD.
+body = { height_cm = 168, build = "curvy", bust_cm = 87, underbust_cm = 72, waist_cm = 64, hips_cm = 94 }
 personality = { traits = ["cheerful", "gossip"] }
 
 [[characters]]
@@ -89,8 +92,25 @@ work = "clinic"
 cash = 9000
 bank = 1200000
 stats = { intellect = 9, agility = 4 }
+# Огромный размер: 30M.
+body = { height_cm = 172, build = "curvy", bust_cm = 110, underbust_cm = 74, waist_cm = 68, hips_cm = 104 }
 abilities = [{ kind = "talent:photographic memory" }]
 personality = { traits = ["calm", "curious"] }
+
+# Вера выпила формулу роста доктора Ким: грудь размером с город (6 км).
+# Правила размера (не пролезть в дом, испуг жителей) придут в 0.5 (D38).
+[[characters]]
+id = "vera"
+name = "Vera"
+role = "lab volunteer"
+profession = "student"
+location = "park"
+home = "park"
+cash = 300
+bank = 20000
+stats = { endurance = 7 }
+body = { height_cm = 168, build = "enormous", bust_cm = 600000, underbust_cm = 78, waist_cm = 70, hips_cm = 100 }
+personality = { traits = ["shy", "brave"] }
 
 [[items]]
 kind = "phone"
@@ -163,3 +183,9 @@ subject = "ross"
 predicate = "investigating"
 object = "break-in at the clinic"
 known_by = ["ross", "kim"]
+
+[[facts]]
+subject = "vera"
+predicate = "drank"
+object = "Dr. Kim's growth formula"
+known_by = ["vera", "kim"]

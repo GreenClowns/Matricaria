@@ -20,7 +20,7 @@
 | `world` | Параметры мира (одна строка) | name, setting (`fantasy` / `modern`), seed, time, rule_mode (`strict` / `narrative` / `free`), scenario_type (`standard` / `cozy`), travel (`map` / `scenes`) |
 | `location` | Места и здания | id, name, kind, parent_id, x, y, discovered_at и discovered_by (если место открыто по ходу игры) |
 | `character` | Герои и NPC | id, name, role, profession, personality (JSON), controller (`player` / `ai`), location_id, home_id и work_id (дом и работа, с 0.4), sprite, portrait, **cash** (наличные), **bank** (на счёте) |
-| `stats` | Характеристики, состояние и тело | character_id, strength, agility, endurance, intellect, charisma (1–10), max_health, health, alive, conditions (JSON-список), height_cm (1…50 000), muscles, fatness (0–100), build |
+| `stats` | Характеристики, состояние и тело | character_id, strength, agility, endurance, intellect, charisma (1–10), max_health, health, alive, conditions (JSON-список), height_cm (1…50 000), muscles, fatness (0–100), build, обхваты bust_cm, underbust_cm, waist_cm, hips_cm (1 см…10 км или пусто, с 0.4) |
 | `relation` | Отношения from → to | liking, trust, fear, respect (−100…100), love (0…100), knows_name |
 | `ability` | Способности | character_id, kind (`divine_will`, `immortality`, `omniscience`, `magic:<школа>`…), params (JSON) |
 | `item` | Предметы | id, kind, name, owner_id **или** location_id, base_price, equipped (`held` / `worn`), damage_min, damage_max |
@@ -30,7 +30,7 @@
 | `snapshot` | Снимки для отката | id, time, last_event_id, label, file |
 | `npc_state` | Состояние жителя для симуляции (0.4) | character_id, activity (`sleep` / `work` / `eat` / `socialize` / `rest`), level (подробность), next_at (когда решит снова), updated_at, потребности food, rest, social, safety (0–100), company, owed (невыплаченная зарплата), shift_day |
 
-Версия схемы — 2 (с 0.4). Мир из 0.3 (схема 1) обновляется сам при открытии и при откате к старому снимку: жителям ставятся дом и работа там, где они стоят, в журнал пишется событие `schema_upgraded`.
+Версия схемы — 3 (с 0.4: в 2 — `npc_state`, дом и работа; в 3 — обхваты тела). Мир схемы 2 получает пустые обхваты. Мир из 0.3 (схема 1) обновляется сам при открытии и при откате к старому снимку: жителям ставятся дом и работа там, где они стоят, в журнал пишется событие `schema_upgraded`.
 
 Появятся в своих версиях:
 

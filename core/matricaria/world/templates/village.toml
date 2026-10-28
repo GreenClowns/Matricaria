@@ -1,6 +1,7 @@
 # Стартовый мир «Ольховка» (фэнтези) для версии 0.3.
 # Тексты — по-английски (D40). Деньги — в медяках.
 # home и work — дом и работа жителя: по ним живёт распорядок (0.4).
+# Обхваты в body (bust_cm, underbust_cm, waist_cm, hips_cm) — в сантиметрах (идея И1).
 
 [world]
 name = "Alder Village"
@@ -75,6 +76,8 @@ home = "marta_house"
 work = "marta_house"
 cash = 45
 stats = { intellect = 8, charisma = 6 }
+# Средний размер: 30C.
+body = { height_cm = 165, build = "average", bust_cm = 84, underbust_cm = 76, waist_cm = 70, hips_cm = 96 }
 abilities = [{ kind = "magic:healing", params = { power = 2 } }]
 personality = { traits = ["kind", "secretive"] }
 
@@ -99,7 +102,8 @@ profession = "trickster"
 location = "forest"
 home = "forest"
 stats = { strength = 1, agility = 9, intellect = 7, charisma = 8 }
-body = { height_cm = 15, muscles = 10, fatness = 20, build = "slender" }
+# Маленький размер: фея ростом 15 см, 4AA.
+body = { height_cm = 15, muscles = 10, fatness = 20, build = "slender", bust_cm = 8, underbust_cm = 7, waist_cm = 6, hips_cm = 8 }
 abilities = [{ kind = "magic:illusion" }]
 personality = { traits = ["playful", "nosy"] }
 
