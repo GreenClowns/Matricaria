@@ -21,6 +21,7 @@ import numpy as np
 from PIL import Image, ImageFilter
 
 MAGENTA = (255, 0, 255)
+OUTLINE = (40, 26, 22)
 
 
 def estimate_block(img: Image.Image) -> int:
@@ -101,8 +102,20 @@ def process_portrait(src: Path, dst: Path, width: int, colors: int,
     return out
 
 
+def magenta_like(a: np.ndarray) -> np.ndarray:
+    """Маска «розовых» точек: фон, его смесь с контуром и тени на фоне.
+
+    У таких точек красный и синий близки и заметно больше зелёного.
+    Фиолетовая мантия или лавандовые волосы под порог не попадают.
+    """
+    r, g, b = a[:, :, 0], a[:, :, 1], a[:, :, 2]
+    return (np.minimum(r, b) - g > 60) & (np.abs(r - b) < 60)
+
+
 def checker_or_flat_bg(a: np.ndarray, bg: tuple[int, int, int] | None, tol: int) -> np.ndarray:
     """Маска фона листа: нарисованная серо-белая шахматка или сплошной цвет."""
+    if bg == MAGENTA:
+        return magenta_like(a)
     if bg is not None:
         return np.abs(a - np.array(bg)).sum(2) < tol
     mx, mn = a.max(2), a.min(2)
@@ -110,15 +123,20 @@ def checker_or_flat_bg(a: np.ndarray, bg: tuple[int, int, int] | None, tol: int)
 
 
 def slice_sheet(src: Path, out_dir: Path, block: int, colors: int,
-                bg: tuple[int, int, int] | None, tol: int, min_area: int = 4000) -> dict:
-    """Режет лист кадров на отдельные кадры и собирает атлас."""
+                bg: tuple[int, int, int] | None, tol: int, min_area: int = 4000,
+                gap: int = 15) -> dict:
+    """Режет лист кадров на отдельные кадры и собирает атлас.
+
+    gap — на каком расстоянии (в точках исходника) части считаются одним
+    кадром. Если кадры стоят тесно и слипаются, его уменьшают.
+    """
     img = Image.open(src).convert("RGB")
     a = np.asarray(img).astype(int)
     fg = ~checker_or_flat_bg(a, bg, tol)
     m = Image.fromarray((fg * 255).astype(np.uint8))
     fg = np.asarray(m.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.MaxFilter(3))) > 0
     grouped = np.asarray(Image.fromarray((fg * 255).astype(np.uint8))
-                         .filter(ImageFilter.MaxFilter(15))) > 0
+                         .filter(ImageFilter.MaxFilter(gap | 1))) > 0
     h, w = grouped.shape
     label = np.zeros((h, w), int)
     boxes = []
@@ -153,6 +171,12 @@ def slice_sheet(src: Path, out_dir: Path, block: int, colors: int,
         if fw < 1 or fh < 1:
             continue
         crop = img.crop((x0, y0, x0 + fw * block, y0 + fh * block))
+        if bg is not None:
+            # Фон заменяем цветом контура, чтобы при уменьшении края
+            # смешивались с тёмным контуром, а не с цветом фона.
+            c = np.asarray(crop).copy()
+            c[~fg[y0:y0 + fh * block, x0:x0 + fw * block]] = OUTLINE
+            crop = Image.fromarray(c)
         mcrop = Image.fromarray((fg[y0:y0 + fh * block, x0:x0 + fw * block] * 255).astype(np.uint8))
         rgb = np.asarray(pixelize(crop, fw, fh, colors))
         alpha = np.asarray(mcrop.resize((fw, fh), Image.BOX)) > 110
@@ -246,6 +270,8 @@ def main(argv: list[str] | None = None) -> None:
     p_sh.add_argument("--colors", type=int, default=28)
     p_sh.add_argument("--bg", help="flat background color (default: grey/white checkerboard)")
     p_sh.add_argument("--tol", type=int, default=90)
+    p_sh.add_argument("--gap", type=int, default=15,
+                      help="merge distance in source points; lower it if frames stick together")
 
     p_rc = sub.add_parser("recolor", help="palette swap by hue rules from a JSON file")
     p_rc.add_argument("src", type=Path)
@@ -259,7 +285,8 @@ def main(argv: list[str] | None = None) -> None:
         out = process_portrait(args.src, args.dst, args.width, args.colors, parse_color(args.bg), args.tol)
         print(f"Saved {args.dst} ({out.width}x{out.height})")
     elif args.cmd == "sheet":
-        info = slice_sheet(args.src, args.out_dir, args.block, args.colors, parse_color(args.bg), args.tol)
+        info = slice_sheet(args.src, args.out_dir, args.block, args.colors, parse_color(args.bg), args.tol,
+                           gap=args.gap)
         print(f"Saved {len(info['frames'])} frames and atlas to {args.out_dir}")
     elif args.cmd == "recolor":
         recolor(args.src, args.dst, json.loads(args.rules.read_text(encoding="utf-8")))

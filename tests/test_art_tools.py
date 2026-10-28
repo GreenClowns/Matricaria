@@ -55,6 +55,25 @@ def test_sheet_slices_frames_on_magenta(tmp_path):
     assert (tmp_path / "frames" / "atlas.png").exists()
 
 
+def test_magenta_like_skips_violet_robe():
+    a = np.array([[[255, 0, 255], [110, 30, 110], [90, 50, 120], [150, 70, 40]]])
+    assert process_art.magenta_like(a).tolist() == [[True, True, False, False]]
+
+
+def test_sheet_gap_separates_close_frames(tmp_path):
+    sheet = Image.new("RGB", (400, 140), (255, 0, 255))
+    for i in range(2):
+        for y in range(20, 120):
+            for x in range(40 + i * 66, 100 + i * 66):
+                sheet.putpixel((x, y), (60, 120, 60))
+    src = tmp_path / "sheet.png"
+    sheet.save(src)
+    joined = process_art.slice_sheet(src, tmp_path / "a", 4, 8, (255, 0, 255), 90, min_area=500)
+    split = process_art.slice_sheet(src, tmp_path / "b", 4, 8, (255, 0, 255), 90, min_area=500, gap=3)
+    assert len(joined["frames"]) == 1
+    assert len(split["frames"]) == 2
+
+
 def test_recolor_changes_green_to_violet(tmp_path):
     img = Image.new("RGBA", (2, 1), (60, 140, 60, 255))
     img.putpixel((1, 0), (0, 0, 0, 0))
