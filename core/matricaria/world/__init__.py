@@ -12,6 +12,7 @@
 """
 
 from .characters import CharactersMixin
+from .calendar import format_date
 from .constants import format_time
 from .errors import NotFoundError, RuleError, SchemaError
 from .facts import FactsMixin
@@ -24,12 +25,14 @@ from .models import (
     Item,
     Knowledge,
     Location,
+    NpcState,
     Relation,
     Snapshot,
     WorldInfo,
 )
 from .relations import RelationsMixin
 from .settings import SettingsMixin
+from .simulation import CLOCK, SimulationMixin, TimeReport
 from .snapshots import SnapshotsMixin
 from .schema import SCHEMA_VERSION
 
@@ -41,12 +44,14 @@ class World(
     RelationsMixin,
     FactsMixin,
     SettingsMixin,
+    SimulationMixin,
     SnapshotsMixin,
 ):
     """Открытый мир. Создать: `World.create(...)`, открыть: `World.open(path)`."""
 
 
 __all__ = [
+    "CLOCK",
     "SCHEMA_VERSION",
     "Character",
     "Event",
@@ -55,11 +60,14 @@ __all__ = [
     "Knowledge",
     "Location",
     "NotFoundError",
+    "NpcState",
     "Relation",
     "RuleError",
     "SchemaError",
     "Snapshot",
+    "TimeReport",
     "World",
     "WorldInfo",
+    "format_date",
     "format_time",
 ]

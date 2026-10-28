@@ -70,6 +70,8 @@ class Character:
     conditions: tuple[str, ...]
     body: dict = field(default_factory=dict)
     abilities: dict[str, dict] = field(default_factory=dict)
+    home_id: str | None = None
+    work_id: str | None = None
 
     @property
     def conscious(self) -> bool:
@@ -195,7 +197,37 @@ def character_from_rows(
         conditions=tuple(json.loads(stats["conditions"])),
         body={key: stats[key] for key in DEFAULT_BODY},
         abilities={a["kind"]: json.loads(a["params"]) for a in abilities},
+        home_id=row["home_id"],
+        work_id=row["work_id"],
     )
+
+
+@dataclass(frozen=True)
+class NpcState:
+    """Чем занят житель и его потребности (0–100: 100 — всё хорошо)."""
+
+    character_id: str
+    activity: str
+    level: str
+    next_at: int
+    updated_at: int
+    food: float
+    rest: float
+    social: float
+    safety: float
+    company: bool
+    owed: int
+    shift_day: int | None
+
+    @property
+    def needs(self) -> dict[str, int]:
+        return {name: round(getattr(self, name)) for name in ("food", "rest", "social", "safety")}
+
+    @classmethod
+    def from_row(cls, row: sqlite3.Row) -> "NpcState":
+        values = {key: row[key] for key in row.keys()}
+        values["company"] = bool(values["company"])
+        return cls(**values)
 
 
 @dataclass(frozen=True)

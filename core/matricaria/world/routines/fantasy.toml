@@ -1,0 +1,65 @@
+# Распорядок жителей фэнтези-мира (версия 0.4, docs/08-simulation.md).
+# Время — "ЧЧ:ММ", сон может переходить через полночь. Деньги — в медяках.
+# Дни недели: mon, tue, wed, thu, fri, sat, sun.
+# Файл можно править без программирования: ядро прочитает его при запуске.
+
+[money]
+payday = "fri"          # зарплата за неделю — в конце этой рабочей смены
+wages_to = "cash"       # куда приходит зарплата: cash (наличные) или bank (счёт)
+takings_to = "cash"     # куда приходит выручка хозяев
+card = false            # можно ли платить со счёта (картой); в фэнтези нельзя
+
+[places]
+# Где кормят и почём одна еда. Место открыто, только пока там работает хозяин.
+food = { tavern = 3 }
+# Куда ходят к людям в свободное время.
+social = ["tavern", "square"]
+
+# Для всех, у кого не сказано иначе.
+[defaults]
+sleep = ["22:00", "07:00"]
+days_off = ["sun"]
+eat_out = 0.4           # как часто едят не дома, если есть деньги (0–1)
+sociable = 0.3          # как часто идут к людям, даже когда не скучно (0–1)
+
+[professions.innkeeper]
+work = ["07:30", "23:00"]
+sleep = ["23:30", "07:00"]
+days_off = []
+takings = [8, 25]       # выручка за рабочий день: от и до
+
+[professions.guard]
+work = ["08:00", "20:00"]
+wage = 4                # за рабочий день, выплата раз в неделю
+eat_out = 0.6
+
+[professions.healer]
+work = ["09:00", "17:00"]
+days_off = ["sat", "sun"]
+takings = [2, 10]
+eat_out = 0.2
+
+[professions.farmer]
+work = ["05:00", "15:00"]
+sleep = ["21:00", "04:30"]
+wage = 4
+
+[professions.blacksmith]
+work = ["07:00", "18:00"]
+takings = [5, 25]
+
+[professions.merchant]
+work = ["09:00", "19:00"]
+takings = [8, 30]
+sociable = 0.5
+
+[professions.mercenary]
+sociable = 0.5
+eat_out = 0.7
+
+# Лесная фея: спит днём, гуляет ночью.
+[professions.trickster]
+sleep = ["04:00", "12:00"]
+days_off = []
+eat_out = 0.1
+sociable = 0.6

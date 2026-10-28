@@ -1,5 +1,6 @@
 # Стартовый мир «Кленовая улица» (современность) для версии 0.3.
 # Тексты — по-английски (D40). Деньги — в центах.
+# home и work — дом и работа жителя: по ним живёт распорядок (0.4).
 
 [world]
 name = "Maple Street"
@@ -34,6 +35,12 @@ name = "Maple Park"
 kind = "park"
 parent = "maple"
 
+[[locations]]
+id = "apartments"
+name = "Maple Apartments"
+kind = "apartments"
+parent = "maple"
+
 [[characters]]
 id = "hero"
 name = "Alex"
@@ -51,6 +58,8 @@ name = "Nina"
 role = "cafe owner"
 profession = "barista"
 location = "cafe"
+home = "apartments"
+work = "cafe"
 cash = 15000
 bank = 900000
 stats = { charisma = 8 }
@@ -62,6 +71,8 @@ name = "Detective Ross"
 role = "detective"
 profession = "detective"
 location = "precinct"
+home = "apartments"
+work = "precinct"
 cash = 6000
 bank = 300000
 stats = { intellect = 8, endurance = 6 }
@@ -73,6 +84,8 @@ name = "Dr. Kim"
 role = "doctor"
 profession = "doctor"
 location = "clinic"
+home = "apartments"
+work = "clinic"
 cash = 9000
 bank = 1200000
 stats = { intellect = 9, agility = 4 }

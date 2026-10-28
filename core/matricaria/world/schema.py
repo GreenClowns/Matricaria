@@ -1,8 +1,8 @@
 """Схема базы мира (SQLite) и её версия.
 
 Версия схемы хранится в самой базе (`PRAGMA user_version`).
-Когда в следующих версиях игры появятся новые таблицы, сюда добавится
-миграция — шаг, который обновляет старое сохранение до новой схемы.
+Старое сохранение обновляется до новой схемы миграцией — шагом из `MIGRATIONS`.
+Версии: 1 — ядро мира (0.3), 2 — дом, работа и состояние жителей (0.4).
 """
 
 import sqlite3
@@ -24,7 +24,7 @@ from .constants import (
 )
 from .errors import SchemaError
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def _one_of(values: tuple[str, ...]) -> str:
@@ -40,6 +40,30 @@ def _scale(name: str) -> str:
     low, high = RELATION_SCALES[name]
     return f"{name} INTEGER NOT NULL DEFAULT 0 CHECK ({name} BETWEEN {low} AND {high})"
 
+
+def _need(name: str) -> str:
+    return f"{name} REAL NOT NULL CHECK ({name} BETWEEN 0 AND 100)"
+
+
+# Состояние жителя для симуляции (0.4): чем занят, когда решит снова,
+# потребности 0–100, была ли рядом компания в начале занятия
+# и заработок, который ещё не выплачен.
+NPC_STATE = f"""
+CREATE TABLE npc_state (
+    character_id TEXT    PRIMARY KEY REFERENCES character(id),
+    activity     TEXT    NOT NULL DEFAULT 'idle',
+    level        TEXT    NOT NULL DEFAULT 'town',
+    next_at      INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL,
+    {_need("food")},
+    {_need("rest")},
+    {_need("social")},
+    {_need("safety")},
+    company      INTEGER NOT NULL DEFAULT 0 CHECK (company IN (0, 1)),
+    owed         INTEGER NOT NULL DEFAULT 0 CHECK (owed >= 0),
+    shift_day    INTEGER
+);
+"""
 
 SCHEMA = f"""
 -- Параметры мира: ровно одна строка.
@@ -75,6 +99,8 @@ CREATE TABLE character (
     personality TEXT    NOT NULL DEFAULT '{{}}',
     controller  TEXT    NOT NULL CHECK (controller IN ({_one_of(CONTROLLERS)})),
     location_id TEXT    REFERENCES location(id),
+    home_id     TEXT    REFERENCES location(id),
+    work_id     TEXT    REFERENCES location(id),
     sprite      TEXT,
     portrait    TEXT,
     cash        INTEGER NOT NULL DEFAULT 0 CHECK (cash >= 0),
@@ -181,6 +207,7 @@ BEGIN SELECT RAISE(ABORT, 'event log is append-only'); END;
 CREATE TRIGGER event_no_delete BEFORE DELETE ON event
 BEGIN SELECT RAISE(ABORT, 'event log is append-only'); END;
 
+{NPC_STATE}
 -- Снимки для отката: время, последнее событие, файл копии базы.
 CREATE TABLE snapshot (
     id            INTEGER PRIMARY KEY,
@@ -192,21 +219,57 @@ CREATE TABLE snapshot (
 """
 
 
+# Миграции: версия → SQL, который обновляет базу этой версии до следующей.
+MIGRATIONS = {
+    # 0.3 → 0.4: дом и работа жителя, состояние для симуляции.
+    # Старым жителям дом и работа — там, где они стоят сейчас.
+    1: f"""
+ALTER TABLE character ADD COLUMN home_id TEXT REFERENCES location(id);
+ALTER TABLE character ADD COLUMN work_id TEXT REFERENCES location(id);
+UPDATE character SET home_id = location_id, work_id = location_id WHERE controller = 'ai';
+{NPC_STATE}
+""",
+}
+
+
 def create_schema(conn: sqlite3.Connection) -> None:
     """Создаёт все таблицы в пустой базе и записывает версию схемы."""
     conn.executescript(SCHEMA)
     conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
 
 
+def schema_version(conn: sqlite3.Connection) -> int:
+    return conn.execute("PRAGMA user_version").fetchone()[0]
+
+
 def check_schema(conn: sqlite3.Connection) -> None:
-    """Проверяет, что база создана этой версией программы."""
-    version = conn.execute("PRAGMA user_version").fetchone()[0]
+    """Проверяет, что это мир Matricaria и программа умеет его открыть.
+
+    Старая схема подходит: её обновит `upgrade_schema`.
+    """
+    version = schema_version(conn)
     if version == 0:
         raise SchemaError("This file is not a Matricaria world")
     if version > SCHEMA_VERSION:
         raise SchemaError(
             f"This world was saved by a newer version of Matricaria (schema {version})"
         )
-    if version < SCHEMA_VERSION:
-        # Миграций пока нет: первая версия схемы.
+    if version not in MIGRATIONS and version != SCHEMA_VERSION:
         raise SchemaError(f"Unsupported world schema version {version}")
+
+
+def upgrade_schema(conn: sqlite3.Connection) -> int | None:
+    """Обновляет базу до текущей схемы. Возвращает старую версию или None.
+
+    Вызывается внутри транзакции: при ошибке база остаётся как была.
+    """
+    old = version = schema_version(conn)
+    if version == SCHEMA_VERSION:
+        return None
+    while version < SCHEMA_VERSION:
+        for statement in MIGRATIONS[version].split(";"):
+            if statement.strip():
+                conn.execute(statement)
+        version += 1
+    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+    return old
